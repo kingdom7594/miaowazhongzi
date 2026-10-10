@@ -59,9 +59,10 @@ radar(L1) --contentBrief--> miaowazhongzi(L2) --draft--> skill-runner(L3) --imag
 
 ### L5 方法论层(miaowazhongzi 内置)
 - `src/lib/knowledge/methodology/`:对标拆解 / 复盘 / 标题爆款公式(模板/清单,无代码);`compliance.md` 含发布前检查清单与版权红线。
-- `src/lib/compliance/`:离线规则(违规词/绝对化用语/来源必填)+ **独立 LLM judge**;`getJudgeConfig()` 保证 judge 模型 ≠ 生成模型。
+- `src/lib/compliance/`:离线规则(违规词/绝对化用语/来源必填)+ **独立 LLM judge**;`getJudgeConfig()` 保证 judge 模型 ≠ 生成模型。规则层只做存在性校验(含数字 ⇒ 有带 url 的 evidence),数值-来源对应交 judge;硬门不含单字/通用风格词(`BANNED_WORDS` 仅作 prompt 建议)。
 - `src/lib/eval/`:内容质量 rubric(钩子/受众契合/依据/平台规范/原创性)+ 中位数非劣门(run 级聚合);CLI `pnpm eval:drafts`。
 - 回填 draft 可选字段:`compliance.checkedBy` / `scores.by`(及 `scores.audienceFit` / `scores.originality`)。
+- CLI(`scripts/`):`pnpm eval:drafts`(质量非劣检验)、`pnpm docs:guard`(文档门禁,ADR-0005)。
 - 详见 [ADR-0007](./adr/0007-l5-methodology-compliance-eval.md)。
 
 ## 5. 部署拓扑

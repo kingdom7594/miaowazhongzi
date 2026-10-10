@@ -1,6 +1,5 @@
 import type { ContentTopic } from '@/lib/radar/types';
 import type { Draft } from '@/lib/types';
-import { BANNED_WORDS } from '@/lib/banned-words';
 import { parseComplianceRules, type ComplianceRules } from '@/lib/knowledge/loader';
 
 export interface RuleFinding {
@@ -44,21 +43,29 @@ function collectHits(text: string, terms: string[]): string[] {
   return hits;
 }
 
+/**
+ * 硬门词表 = 合规词库(`compliance.md` 的 disallowed)+ 绝对化用语。
+ *
+ * - AI 味/风格词表(`BANNED_WORDS`:`非常`/`特别`/`首先`/`最`…)**不进硬门**,只作 prompt
+ *   「建议避免」。它们是通用风格词,子串匹配会误杀正常文案(「非常好用」「首先说结论」)。
+ * - 剔除单字词:中文无词边界,单字「最」会命中「最近 / 最好」这类正常词。绝对化意图由
+ *   多字词(「最便宜」/「最佳」/「唯一」…)和 LLM judge 兜底。
+ * - 不改 `compliance.md` —— 该词表仍整篇注入 prompt 作建议。
+ */
+export function hardGateTerms(rules: ComplianceRules): string[] {
+  return [...new Set([...rules.disallowed, ...ABSOLUTE_TERMS])].filter((t) => t.length >= 2);
+}
+
 /** 违规词 + 绝对化用语(规则层,离线纯函数)。 */
 export function checkBannedAndAbsolute(text: string, rules: ComplianceRules): RuleResult {
   const findings: RuleFinding[] = [];
-  const banned = collectHits(text, [...BANNED_WORDS, ...rules.disallowed]);
-  for (const word of banned) {
+  for (const word of collectHits(text, hardGateTerms(rules))) {
+    const isAbsolute = ABSOLUTE_TERMS.includes(word);
     findings.push({
-      rule: 'banned-word',
-      detail: `命中违规/敏感词「${word}」`,
+      rule: isAbsolute ? 'absolute-term' : 'banned-word',
+      detail: isAbsolute ? `命中绝对化用语「${word}」` : `命中违规/敏感词「${word}」`,
       snippet: rules.replacements[word] ? `建议改为:${rules.replacements[word]}` : undefined,
     });
-  }
-  const absolute = collectHits(text, ABSOLUTE_TERMS);
-  for (const word of absolute) {
-    if (banned.includes(word)) continue;
-    findings.push({ rule: 'absolute-term', detail: `命中绝对化用语「${word}」` });
   }
   return { passed: findings.length === 0, findings };
 }
@@ -73,7 +80,10 @@ function hasTraceableSource(topic: ContentTopic): boolean {
 /**
  * 数据来源必填 + 来源 URL(离线)。
  * 正文含数字/数据时,选题必须提供可追溯来源;evidence 条目必须带 url。
- * 不做 URL 实活抓取 —— 只校验「存在 + 可映射」。
+ *
+ * 边界(与 owner 批准范围一致):规则层只做**存在性**校验(有数字 ⇒ 得有带 url 的
+ * evidence);「正文某个数字是否真的对应某条来源」这类**数值-来源对应**交 LLM judge,
+ * 规则层不做 URL 抓取、不做语义比对。
  */
 export function checkSourceEvidence(draft: Draft, topic: ContentTopic): RuleResult {
   const findings: RuleFinding[] = [];

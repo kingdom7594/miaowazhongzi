@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import type { ContentTopic } from '@/lib/radar/types';
 import type { Draft } from '@/lib/types';
-import { runRules, checkBannedAndAbsolute, checkSourceEvidence } from './rules';
+import { runRules, checkBannedAndAbsolute, checkSourceEvidence, hardGateTerms } from './rules';
+import { parseComplianceRules } from '@/lib/knowledge/loader';
 
 const emptyRules = { disallowed: [], replacements: {} };
 
@@ -30,6 +31,42 @@ describe('checkBannedAndAbsolute', () => {
     expect(r.passed).toBe(false);
     const f = r.findings.find((x) => x.rule === 'banned-word');
     expect(f?.snippet).toContain('很不错');
+  });
+
+  // 回归(HIGH):硬门不得误杀含通用风格词/单字「最」的正常文案。
+  it.each([
+    '最近发现一个特别好用的 AI 工具,分享给大家',
+    '这是最好用的周报模板,附上我的使用心得',
+    '这个思路非常实用,我自己也在用',
+    '首先说结论,然后拆成三步讲清楚',
+    '最后附上我整理的清单',
+  ])('passes a clean draft containing benign style words: %s', (body) => {
+    const r = checkBannedAndAbsolute(body, emptyRules);
+    expect(r.findings).toEqual([]);
+    expect(r.passed).toBe(true);
+  });
+
+  it('still flags genuine absolute/regulated terms', () => {
+    expect(checkBannedAndAbsolute('这是唯一的选择', emptyRules).passed).toBe(false);
+    expect(checkBannedAndAbsolute('全网最便宜的方案', { disallowed: ['最便宜'], replacements: {} }).passed).toBe(false);
+    expect(checkBannedAndAbsolute('效果最佳', emptyRules).passed).toBe(false);
+  });
+
+  it('drops single-char terms from the hard gate', () => {
+    const terms = hardGateTerms({ disallowed: ['最', '绝了'], replacements: {} });
+    expect(terms).not.toContain('最');
+    expect(terms).toContain('绝了');
+  });
+
+  it('passes benign drafts against the real compliance.md word list', () => {
+    const rules = parseComplianceRules();
+    for (const body of [
+      '最近发现一个特别好用的 AI 工具,分享给大家',
+      '这是最好用的周报模板,附上我的使用心得',
+      '这个思路非常实用,我自己也在用',
+    ]) {
+      expect(checkBannedAndAbsolute(body, rules).passed).toBe(true);
+    }
   });
 });
 
