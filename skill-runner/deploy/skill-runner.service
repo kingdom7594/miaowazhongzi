@@ -1,0 +1,37 @@
+# ============================================================
+# skill-runner — L3 视觉适配器 systemd 服务（模板）
+# 由 ops-agent 部署：填入真实路径、注入运行目录下 .env（含 IMAGE_API_KEY）
+# 仅监听本机 127.0.0.1:5090，公网不暴露（与 radar-dashboard 一致）
+# ============================================================
+[Unit]
+Description=skill-runner (L3 visual adapter for miaowazhongzi)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+# 部署时替换为真实路径
+WorkingDirectory=/opt/miaowazhongzi/skill-runner
+Environment=HOST=127.0.0.1
+Environment=PORT=5090
+# 从运行目录 .env 注入配置（含 IMAGE_API_KEY）；文件缺失时以 - 前缀忽略
+EnvironmentFile=-/opt/miaowazhongzi/skill-runner/.env
+ExecStart=/usr/bin/node dist/bin/start.js
+Restart=always
+RestartSec=5
+KillSignal=SIGINT
+TimeoutStopSec=20
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=skill-runner
+
+# 基础加固
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/miaowazhongzi/skill-runner/data
+
+[Install]
+WantedBy=multi-user.target

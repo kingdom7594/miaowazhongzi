@@ -1,0 +1,24 @@
+{
+  "name": "skill-runner",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "L3 视觉适配器：把 baoyu / mondo 脚本封装成稳定的 HTTP 契约，供 miaowazhongzi 调用（ADR-0002）",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/bin/start.js",
+    "dev": "tsx watch src/bin/start.ts",
+    "test": "vitest run",
+    "ts-check": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "fastify": "^5.2.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5",
+    "vitest": "^2.1.8"
+  }
+}
