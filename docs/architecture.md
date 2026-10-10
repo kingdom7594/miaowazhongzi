@@ -43,7 +43,11 @@ radar(L1) --contentBrief--> miaowazhongzi(L2) --draft--> skill-runner(L3) --imag
 - `src/lib/radar`:拉 `/api/content`,选题入库/去重/追溯。
 - `src/lib/knowledge`:产品档案/人设/合规词库注入。
 - `src/lib/compliance`:规则 + 独立 judge。
-- `src/lib/image`:调 skill-runner。
+- `src/lib/image`:调 skill-runner 出图。`client.ts` 为 HTTP 契约;`render-draft.ts` 组装 draft→`inputs.content`、
+  调 `/render`(封面 `baoyu-cover-image` / 卡片 `baoyu-xhs-images`)、回写 `drafts.images`(同技能替换)并把
+  skill-runner 绝对路径映射为 app 预览 url(限制在 `RENDER_OUTPUT_ROOT` 内)。
+- API:`POST /api/drafts/render {draftId, skill, aspect?, count?}`(L2→L3,失败 502 不 mock)、
+  `GET /api/renders/[...path]`(只读预览产物,越界 404);`/visual` 控制台接线(选 draft → 选 skill → 出图 → 预览)。
 - `src/lib/publish`:分发适配器。
 - SQLite:选题库 / 稿件库 / 发布记录。
 
