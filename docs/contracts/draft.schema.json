@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "draft.schema.json",
+  "title": "Draft",
+  "description": "L2 miaowazhongzi 产出的多平台稿件契约。一份 contentBrief 的某个 topic 在一个平台上产出一份 draft。",
+  "type": "object",
+  "required": ["topicId", "platform", "body"],
+  "properties": {
+    "topicId": {"type": "string", "description": "对应 contentBrief.topics[].id"},
+    "platform": {"type": "string", "enum": ["xiaohongshu", "douyin", "wechat", "bilibili", "kuaishou", "shipinhao"]},
+    "titles": {"type": "array", "items": {"type": "string"}, "description": "标题备选"},
+    "body": {"type": "string"},
+    "tags": {"type": "array", "items": {"type": "string"}},
+    "coverPrompt": {"type": "string", "description": "封面/配图提示词,供 L3 使用"},
+    "images": {
+      "type": "array",
+      "description": "L3 产出图片的引用",
+      "items": {
+        "type": "object",
+        "properties": {
+          "skill": {"type": "string", "description": "如 baoyu-xhs-images / mondo"},
+          "path": {"type": "string"},
+          "aspect": {"type": "string"}
+        }
+      }
+    },
+    "compliance": {
+      "type": "object",
+      "properties": {
+        "passed": {"type": "boolean"},
+        "risks": {"type": "array", "items": {"type": "string"}},
+        "checkedBy": {"type": "string", "description": "rule+judge"}
+      }
+    },
+    "scores": {
+      "type": "object",
+      "properties": {
+        "hook": {"type": "number"},
+        "evidence": {"type": "number"},
+        "platformFit": {"type": "number"},
+        "by": {"type": "string", "description": "judge"}
+      }
+    }
+  }
+}

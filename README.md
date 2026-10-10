@@ -9,9 +9,9 @@
 
 ## ✨ 项目介绍
 
-**妙蛙种字**是一款专为小红书虚拟资料卖家打造的 AI 图文笔记批量生成工具。通过 AI 技术，帮助卖家快速生成高质量、符合平台调性的种草笔记，大幅提升内容创作效率。
+**妙蛙种字**是一套内容工厂控制台:上游雷达产出选题 brief,中枢负责多平台文案生产、视觉出图与分发,面向小红书虚拟资料/虚拟产品卖家。
 
-🔗 **在线体验**: [https://74vr5fb6fk.coze.site](https://74vr5fb6fk.coze.site)
+> 当前迭代 **M2**:去厂商锁定(OpenAI 兼容,默认 DeepSeek)+ 雷达选题接入 + SQLite 持久化 + 知识库。
 
 ## 🚀 功能特性
 
@@ -56,7 +56,8 @@
 | 语言 | TypeScript 5 |
 | 样式 | Tailwind CSS 4 |
 | UI 组件 | shadcn/ui + Radix UI |
-| AI SDK | coze-coding-dev-sdk |
+| AI SDK | OpenAI 兼容客户端(默认 DeepSeek) |
+| 数据层 | SQLite(`node:sqlite`,单文件) |
 | 图标 | Lucide React |
 | 包管理 | pnpm 9 |
 
@@ -64,8 +65,20 @@
 
 ### 环境要求
 
-- Node.js >= 18
+- Node.js >= 22.5(`node:sqlite` 内置)
 - pnpm >= 9.0.0
+
+### 配置
+
+复制 `.env.example` 为 `.env` 并填写:
+
+| 变量 | 说明 | 默认 |
+|---|---|---|
+| `LLM_API_KEY` | OpenAI 兼容 API Key(必填,缺失则生成报错,不 mock) | — |
+| `LLM_BASE_URL` | OpenAI 兼容端点 | `https://api.deepseek.com/v1` |
+| `LLM_MODEL` | 模型 | `deepseek-chat` |
+| `RADAR_BASE_URL` | 上游雷达 | `http://127.0.0.1:5080` |
+| `DB_PATH` | SQLite 文件 | `./data/content-factory.db` |
 
 ### 安装步骤
 
@@ -81,7 +94,7 @@ pnpm install
 pnpm dev
 ```
 
-访问 [http://localhost:3000](http://localhost:3000) 查看应用。
+访问 [http://localhost:3000](http://localhost:3000)(默认进入 `/topic` 选题看板)。
 
 ### 构建生产版本
 
@@ -90,38 +103,49 @@ pnpm build
 pnpm start
 ```
 
+### 测试
+
+```bash
+pnpm test          # vitest 单测(db 迁移/去重、contract 校验、prompt 解析、知识库)
+pnpm exec tsc -p tsconfig.json --noEmit   # 类型检查
+```
+
 ## 📁 项目结构
 
 ```
 miaowazhongzi/
+├── docs/                               # 架构 SSOT(architecture.md / adr/ / contracts/)
 ├── src/
 │   ├── app/
+│   │   ├── (console)/                  # 控制台:topic / workbench / visual / review / library / publish / settings
 │   │   ├── api/
-│   │   │   ├── generate/route.ts      # 笔记生成 API
-│   │   │   ├── title-boost/route.ts   # 标题强化 API
-│   │   │   └── infographic/route.ts   # 信息图生成 API
-│   │   ├── generate/page.tsx          # 生成页面
-│   │   ├── globals.css                # 全局样式
-│   │   ├── layout.tsx                 # 根布局
-│   │   └── page.tsx                   # 首页
-│   ├── components/
-│   │   ├── home-page.tsx              # 主页组件
-│   │   └── ui/                        # shadcn/ui 组件
+│   │   │   ├── radar/ingest/route.ts   # 拉雷达选题入库
+│   │   │   ├── topics/route.ts         # 选题库
+│   │   │   ├── drafts/route.ts         # 稿件库
+│   │   │   ├── drafts/generate/route.ts# 选题 → 多平台 draft
+│   │   │   ├── knowledge/route.ts      # 知识库
+│   │   │   ├── health/route.ts         # 依赖健康检查
+│   │   │   ├── generate/route.ts       # 笔记生成(OpenAI 兼容)
+│   │   │   ├── title-boost/route.ts    # 标题强化
+│   │   │   └── infographic/route.ts    # 信息图生成
+│   │   └── ...                         # layout / globals / generate(旧版单页工具)
+│   ├── components/console/             # 控制台外壳 + UI 基元
 │   └── lib/
-│       ├── banned-words.ts            # 敏感词库
-│       ├── content-cleaner.ts         # 内容清洗工具
-│       ├── parse-llm-json.ts          # LLM 输出解析
-│       ├── platform-config.ts         # 平台配置
-│       ├── prompts.ts                 # AI 提示词
-│       ├── types.ts                   # 类型定义
-│       └── utils.ts                   # 工具函数
+│       ├── ai/client.ts                # OpenAI 兼容流式客户端
+│       ├── radar/{client,ingest,types} # 雷达选题接入
+│       ├── db/{client,migrations,topics,drafts,publications}  # SQLite 数据层
+│       ├── knowledge/{loader,*.md}     # 产品档案 / 人设 / 合规词库
+│       ├── contracts/validate.ts       # draft / contentBrief schema 校验(ajv)
+│       ├── production/drafts.ts        # 选题 → draft 生产
+│       └── ...                         # platform-config / prompts / types ...
 ├── package.json
-├── tsconfig.json
-├── next.config.ts
-├── postcss.config.mjs
-├── LICENSE
 └── README.md
 ```
+
+## 🧩 数据流
+`radar contentBrief (L1) → draft (L2, 落 SQLite) → 图片 (L3, M3) → 发布记录 (L4, M4)`
+
+契约见 `docs/contracts/`: `contentBrief.schema.json`(L1→L2)、`draft.schema.json`(L2 产出)。
 
 ## 🎯 支持的资料类型
 
@@ -141,6 +165,8 @@ miaowazhongzi/
 | 🎵 抖音 | 180-220字，口播脚本，含画面标注 |
 | 💬 公众号 | 1200-1800字，深度长文，逻辑严密 |
 | 📺 B站 | 800-1500字，信息密度高，可玩梗 |
+| ⚡ 快手 | 120-200字，口播利益点，社区语感 |
+| 🎬 视频号 | 200-400字，正向价值，稳重可信 |
 
 ## 🤝 贡献
 

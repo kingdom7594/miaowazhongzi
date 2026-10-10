@@ -78,6 +78,38 @@ export const PLATFORM_CONFIG: Record<string, PlatformSpec> = {
     outputStructure: '3个视频标题 + 封面标题 + 正文(800-1500字) + 时间轴 + 3-5个话题标签',
     extraFields: ['cover_title', 'timeline'],
   },
+  kuaishou: {
+    id: 'kuaishou', name: '快手', emoji: '⚡',
+    wordCount: { min: 120, max: 200 }, temperature: 0.85,
+    titleLength: { min: 8, max: 15 },
+    titleStyle: '直白口语+利益点，8-15字，接地气',
+    bodyRules: [
+      '前3秒用大白话抛出利益点或反常识结论',
+      '口播以“老铁”“家人们”等社区语感开场（自然不堆砌）',
+      '一段一个信息点，句子短，方便口播',
+      '每段后标注[画面:XXX]',
+      '结尾直接引导点赞+关注',
+    ],
+    bannedWords: [],
+    outputStructure: '3个备选标题 + 口播脚本(120-200字) + 3-5个话题标签',
+    extraFields: ['hook'],
+  },
+  shipinhao: {
+    id: 'shipinhao', name: '视频号', emoji: '🎬',
+    wordCount: { min: 200, max: 400 }, temperature: 0.7,
+    titleLength: { min: 12, max: 20 },
+    titleStyle: '正向价值+共鸣，12-20字，稳重可信',
+    bodyRules: [
+      '开头用生活场景/共鸣句引入，语气稳重真诚',
+      '内容偏实用与正向价值，避免过度夸张营销',
+      '分2-4点讲清楚，语句完整便于口播',
+      '每段标注[画面:XXX]',
+      '结尾引导点赞+转发给需要的朋友',
+    ],
+    bannedWords: [],
+    outputStructure: '3个备选标题 + 口播文案(200-400字) + 3-5个话题标签',
+    extraFields: ['hook'],
+  },
 };
 
 export const REWRITE_FOCUS_OPTIONS = [

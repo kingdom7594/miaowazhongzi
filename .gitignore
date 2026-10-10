@@ -18,6 +18,13 @@ yarn-error.log*
 .pnpm-debug.log*
 .env
 .env*
+!.env.example
 .vercel
 *.tsbuildinfo
 next-env.d.ts
+
+# local data (SQLite)
+/data/
+*.db
+*.db-shm
+*.db-wal

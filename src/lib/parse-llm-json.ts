@@ -1,4 +1,4 @@
-import type { GeneratedNote } from './types';
+import type { GeneratedNote, Draft, DraftCompliance, DraftScores } from './types';
 
 export function parseLLMJson(text: string): GeneratedNote[] {
   let cleaned = text.trim();
@@ -41,4 +41,70 @@ export function parseTitleBoostJson(text: string): Array<{ type: string; title: 
     console.error('Failed to parse title boost JSON:', text);
     return [];
   }
+}
+
+function normalizeCompliance(value: unknown): DraftCompliance | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const v = value as { passed?: unknown; risks?: unknown };
+  return {
+    passed: Boolean(v.passed),
+    risks: Array.isArray(v.risks) ? v.risks.map(String) : [],
+  };
+}
+
+function normalizeScores(value: unknown): DraftScores | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const v = value as Record<string, unknown>;
+  const num = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) ? x : undefined);
+  return {
+    hook: num(v.hook),
+    evidence: num(v.evidence),
+    platformFit: num(v.platformFit),
+  };
+}
+
+/**
+ * Parse a single draft JSON object produced for one topic+platform.
+ * Returns null when the model output cannot be coerced into the draft contract.
+ */
+export function parseDraftJson(
+  text: string,
+  topicId: string,
+  platform: string,
+): Draft | null {
+  let cleaned = text.trim();
+  const codeBlockMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (codeBlockMatch) cleaned = codeBlockMatch[1].trim();
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  if (start === -1 || end === -1 || end < start) return null;
+  const slice = cleaned.substring(start, end + 1);
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(slice);
+  } catch {
+    try {
+      parsed = JSON.parse(slice.replace(/,\s*([\]}])/g, '$1'));
+    } catch {
+      console.error('Failed to parse draft JSON:', text);
+      return null;
+    }
+  }
+  const obj = (Array.isArray(parsed) ? parsed[0] : parsed) as Record<string, unknown> | undefined;
+  if (!obj || typeof obj !== 'object') return null;
+
+  const body = typeof obj.body === 'string' ? obj.body : '';
+  if (!body.trim()) return null;
+
+  return {
+    topicId,
+    platform,
+    titles: Array.isArray(obj.titles) ? obj.titles.map(String) : [],
+    body,
+    tags: Array.isArray(obj.tags) ? obj.tags.map(String) : [],
+    coverPrompt: typeof obj.coverPrompt === 'string' ? obj.coverPrompt : undefined,
+    compliance: normalizeCompliance(obj.compliance),
+    scores: normalizeScores(obj.scores),
+  };
 }

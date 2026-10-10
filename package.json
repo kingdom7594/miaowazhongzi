@@ -8,10 +8,10 @@
     "preinstall": "npx only-allow pnpm",
     "lint": "eslint",
     "start": "next start",
+    "test": "vitest run",
     "ts-check": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "coze-coding-dev-sdk": "^0.7.25",
     "html2canvas": "^1.4.1",
     "lucide-react": "^0.468.0",
     "next": "16.1.1",
@@ -25,14 +25,16 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^24.0.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "ajv": "^8.17.1",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
     "only-allow": "^1.2.2",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^2.1.8"
   },
   "packageManager": "pnpm@9.0.0",
   "engines": {

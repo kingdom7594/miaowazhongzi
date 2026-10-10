@@ -1,6 +1,8 @@
 import type { FormData } from './types';
+import type { ContentTopic } from './radar/types';
 import { getPlatformSpec } from './platform-config';
 import { BANNED_WORDS } from './banned-words';
+import { buildKnowledgeBlock } from './knowledge/loader';
 
 export function buildSystemPrompt(platform: string, aiDensity: number, wordCount: number): string {
   const spec = getPlatformSpec(platform);
@@ -15,6 +17,9 @@ export function buildSystemPrompt(platform: string, aiDensity: number, wordCount
 
 ## 核心身份
 你是一个真实的、有温度的内容创作者，不是 AI。你的笔记要让读者觉得是一个真人在分享自己的真实经历和感受。
+
+## 知识库（产品档案 / 人设 / 合规词库）
+${buildKnowledgeBlock()}
 
 ## AI 浓度控制
 当前 AI 浓度设置为 ${aiDensity}%（0=纯人味，100=纯 AI 风格）
@@ -84,6 +89,9 @@ export function buildRewriteSystemPrompt(platform: string, wordCount: number): s
 2. 重新创作：从原文提取核心信息后用自己的方式重新创作
 3. 增加原创性：加入自己的理解和补充信息
 
+## 知识库（产品档案 / 人设 / 合规词库）
+${buildKnowledgeBlock()}
+
 ## 平台规范
 ${spec.bodyRules.map(r => `- ${r}`).join('\n')}
 - 正文控制在 ${wordCount} 字左右
@@ -152,4 +160,58 @@ ${originalText}
 ${focus}
 
 请完全按照${getPlatformSpec(platformId).name}平台的风格规范重新创作。`;
+}
+
+/** L2 生产:从一条雷达选题生成某平台 draft 的系统 prompt。 */
+export function buildTopicDraftSystemPrompt(platform: string, wordCount: number, aiDensity: number): string {
+  const spec = getPlatformSpec(platform);
+  const bannedList = [...spec.bannedWords, ...BANNED_WORDS].filter((v, i, a) => a.indexOf(v) === i);
+  return `你是一位资深的${spec.name}内容创作者,为虚拟资料/虚拟产品卖家撰写种草稿件。
+
+## 知识库（产品档案 / 人设 / 合规词库）
+${buildKnowledgeBlock()}
+
+## 硬性要求
+- 只依据下方选题提供的 corePoints 与 evidence 写作,禁止编造数字或来源;引用数据必须能对应到 evidence.url。
+- 至少一处明确"来源/依据"表述,让内容可追溯。
+- 违禁词不得出现:${bannedList.join('、') || '无特别限制'}
+- 输出面向"${spec.name}"平台;正文 ${wordCount} 字左右(±10%)。
+- AI 浓度参考:${aiDensity}%(数值越低越口语化、越像真人)。
+
+## ${spec.name}平台规范
+- 标题风格:${spec.titleStyle}(长度 ${spec.titleLength.min}-${spec.titleLength.max})
+${spec.bodyRules.map((r) => `- ${r}`).join('\n')}
+
+## 输出格式
+严格输出单个 JSON 对象(不要包裹 markdown 代码块):
+{
+  "titles": ["备选标题1", "备选标题2", "备选标题3"],
+  "body": "正文",
+  "tags": ["#标签1", "#标签2"],
+  "coverPrompt": "封面图英文提示词",
+  "compliance": { "passed": true, "risks": [] },
+  "scores": { "hook": 8, "evidence": 7, "platformFit": 9 }
+}`;
+}
+
+/** L2 生产:选题 → draft 的用户 prompt。 */
+export function buildTopicDraftUserPrompt(topic: ContentTopic): string {
+  const evidence = (topic.evidence ?? [])
+    .map((e) => `  - ${e.claim}${e.url ? ` (来源: ${e.url})` : ''}`)
+    .join('\n');
+  const corePoints = (topic.corePoints ?? []).map((p) => `  - ${p}`).join('\n');
+  return `请把下面这条雷达选题改写成一篇可发布的稿件。
+
+## 选题
+- id:${topic.id}
+- 标题:${topic.headline}
+${topic.angle ? `- 切入角度:${topic.angle}\n` : ''}${topic.audience ? `- 目标受众:${topic.audience}\n` : ''}${topic.hook ? `- 钩子:${topic.hook}\n` : ''}${topic.sourceRef ? `- 来源追溯:${topic.sourceRef}\n` : ''}
+## 核心要点
+${corePoints || '  - (无)'}
+
+## 依据(必须可追溯,禁止编造)
+${evidence || '  - (无直接信号)'}
+
+## 标签参考
+${(topic.tags ?? []).map((t) => `#${t.replace(/^#/, '')}`).join(' ') || '(无)'}`;
 }

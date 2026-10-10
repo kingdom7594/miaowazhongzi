@@ -72,6 +72,8 @@ export const PLATFORM_OPTIONS = [
   { value: 'douyin', label: '抖音', emoji: '🎵' },
   { value: 'wechat', label: '公众号', emoji: '💬' },
   { value: 'bilibili', label: 'B站', emoji: '📺' },
+  { value: 'kuaishou', label: '快手', emoji: '⚡' },
+  { value: 'shipinhao', label: '视频号', emoji: '🎬' },
 ] as const;
 
 export interface ContentExtraction {
@@ -138,7 +140,60 @@ export const POSTING_TIME_SUGGESTIONS: Record<string, string[]> = {
   douyin: ['7:00-8:30 (早通勤)', '11:30-13:00 (午休)', '17:30-19:00 (晚通勤)', '20:00-22:00 (晚间黄金档)'],
   wechat: ['7:00-8:30 (早通勤)', '11:30-12:30 (午休)', '20:00-22:00 (晚间阅读)', '22:00-23:00 (睡前深度阅读)'],
   bilibili: ['10:00-12:00 (上午)', '14:00-16:00 (下午)', '18:00-20:00 (晚通勤)', '21:00-23:00 (晚间黄金档)'],
+  kuaishou: ['7:00-9:00 (早通勤)', '12:00-13:00 (午休)', '18:00-20:00 (晚间)', '21:00-23:00 (睡前)'],
+  shipinhao: ['7:30-9:00 (早间)', '12:00-13:30 (午休)', '19:00-21:00 (晚间)', '21:00-22:30 (睡前)'],
 };
+
+export interface DraftImage {
+  skill?: string;
+  path?: string;
+  aspect?: string;
+}
+
+export interface DraftCompliance {
+  passed: boolean;
+  risks: string[];
+  checkedBy?: string;
+}
+
+export interface DraftScores {
+  hook?: number;
+  evidence?: number;
+  platformFit?: number;
+  by?: string;
+}
+
+/** L2 产出稿件契约,对齐 docs/contracts/draft.schema.json */
+export interface Draft {
+  topicId: string;
+  platform: string;
+  titles?: string[];
+  body: string;
+  tags?: string[];
+  coverPrompt?: string;
+  images?: DraftImage[];
+  compliance?: DraftCompliance;
+  scores?: DraftScores;
+}
+
+export type DraftStatus = 'draft' | 'in_review' | 'approved' | 'rejected' | 'published';
+
+export interface DraftRecord extends Draft {
+  id: number;
+  status: DraftStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PublicationRecord {
+  id: number;
+  draftId: number | null;
+  platform: string;
+  status: string;
+  result?: Record<string, unknown>;
+  publishedAt?: string | null;
+  createdAt: string;
+}
 
 const HISTORY_KEY = 'znote_history';
 const MAX_HISTORY = 20;
