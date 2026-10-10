@@ -65,6 +65,7 @@ radar(L1) --contentBrief--> miaowazhongzi(L2) --draft--> skill-runner(L3) --imag
 - [ADR-0002 L3 视觉走适配器调用](./adr/0002-visual-adapter.md)
 - [ADR-0003 数据层选型 SQLite](./adr/0003-sqlite.md)
 - [ADR-0004 L2–L5 内聚进 miaowazhongzi](./adr/0004-consolidate-into-miaowazhongzi.md)
+- [ADR-0005 文档 SSOT 落位与 docs-guard](./adr/0005-docs-ssot-and-guard.md)
 
 ## 7. 迭代指引(如何用本文档)
 - 新需求先问:**落在哪一层?改哪个契约?**

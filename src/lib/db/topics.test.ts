@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createDb } from './client';
 import { upsertBriefTopics, listTopics, getTopic } from './topics';
+import { runMigrations, MIGRATIONS } from './migrations';
 import type { ContentBrief } from '@/lib/radar/types';
 
 const brief: ContentBrief = {
@@ -53,8 +54,18 @@ describe('topics repository', () => {
     expect(topic?.corePoints).toEqual(['要点A']);
   });
 
-  it('runs migrations idempotently', () => {
+  it('runs migrations idempotently when run twice on the same db', () => {
     const db = createDb(':memory:');
+    const appliedCount = () =>
+      (db.prepare('SELECT COUNT(*) AS n FROM _migrations').get() as { n: number }).n;
+
+    expect(appliedCount()).toBe(MIGRATIONS.length);
+
+    // Second explicit run on the SAME db must be a no-op (no re-apply, no throw).
+    expect(() => runMigrations(db)).not.toThrow();
+    expect(appliedCount()).toBe(MIGRATIONS.length);
+
+    // Data still works afterwards.
     const second = upsertBriefTopics(brief, db);
     expect(second.total).toBe(2);
     expect(listTopics(db).length).toBe(2);
