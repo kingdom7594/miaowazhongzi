@@ -14,6 +14,7 @@
 | [adr/0004-consolidate-into-miaowazhongzi.md](./adr/0004-consolidate-into-miaowazhongzi.md) | v1 | Accepted | L2–L5 内聚进 miaowazhongzi |
 | [adr/0005-docs-ssot-and-guard.md](./adr/0005-docs-ssot-and-guard.md) | v1 | Accepted | 文档 SSOT 落位 miaowazhongzi/docs + 启用 docs-guard |
 | [adr/0006-l3-agent-skill-runtime.md](./adr/0006-l3-agent-skill-runtime.md) | v1 | Accepted | L3 视觉采用 agent 技能运行时(首选 opencode,可替换适配器) |
+| [adr/0007-l5-methodology-compliance-eval.md](./adr/0007-l5-methodology-compliance-eval.md) | v1 | Accepted | L5 方法论吸收 + 合规引擎 + 内容质量评估(双闸门 + 非劣检验) |
 
 ## 维护规则
 1. **改架构 ⇒ 同步改 `architecture.md` + 新增/更新 ADR**,否则视为未完成。

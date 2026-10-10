@@ -34,10 +34,13 @@
     },
     "scores": {
       "type": "object",
+      "description": "L5 独立 judge 的质量评分(rubric 1-5)。由 L5 回填,生成模型不参与自评。",
       "properties": {
-        "hook": {"type": "number"},
-        "evidence": {"type": "number"},
-        "platformFit": {"type": "number"},
+        "hook": {"type": "number", "description": "钩子强度"},
+        "audienceFit": {"type": "number", "description": "受众契合"},
+        "evidence": {"type": "number", "description": "依据支撑"},
+        "platformFit": {"type": "number", "description": "平台规范"},
+        "originality": {"type": "number", "description": "原创性"},
         "by": {"type": "string", "description": "judge"}
       }
     }

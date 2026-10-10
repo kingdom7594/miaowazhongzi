@@ -43,6 +43,35 @@ export function parseTitleBoostJson(text: string): Array<{ type: string; title: 
   }
 }
 
+/**
+ * Extract the first JSON object from a model response (tolerates ```json fences
+ * and trailing commas). Returns null when nothing parseable is found.
+ */
+export function extractJsonObject(text: string): Record<string, unknown> | null {
+  let cleaned = text.trim();
+  const codeBlockMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (codeBlockMatch) cleaned = codeBlockMatch[1].trim();
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  if (start === -1 || end === -1 || end < start) return null;
+  const slice = cleaned.substring(start, end + 1);
+  try {
+    const parsed = JSON.parse(slice);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    try {
+      const parsed = JSON.parse(slice.replace(/,\s*([\]}])/g, '$1'));
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+        ? (parsed as Record<string, unknown>)
+        : null;
+    } catch {
+      return null;
+    }
+  }
+}
+
 function normalizeCompliance(value: unknown): DraftCompliance | undefined {
   if (!value || typeof value !== 'object') return undefined;
   const v = value as { passed?: unknown; risks?: unknown };

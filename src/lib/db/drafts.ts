@@ -82,6 +82,23 @@ export function getDraft(id: number, db: DatabaseSync = getDb()): DraftRecord | 
   return row ? toRecord(row) : null;
 }
 
+/** 回填 L5 评估结果(compliance / scores)。 */
+export function updateDraftEvaluation(
+  id: number,
+  evaluation: Pick<Draft, 'compliance' | 'scores'>,
+  db: DatabaseSync = getDb(),
+): boolean {
+  const result = db
+    .prepare('UPDATE drafts SET compliance_json = ?, scores_json = ?, updated_at = ? WHERE id = ?')
+    .run(
+      evaluation.compliance ? JSON.stringify(evaluation.compliance) : null,
+      evaluation.scores ? JSON.stringify(evaluation.scores) : null,
+      new Date().toISOString(),
+      id,
+    );
+  return Number(result.changes) > 0;
+}
+
 export function updateDraftStatus(id: number, status: DraftStatus, db: DatabaseSync = getDb()): boolean {
   const result = db
     .prepare('UPDATE drafts SET status = ?, updated_at = ? WHERE id = ?')

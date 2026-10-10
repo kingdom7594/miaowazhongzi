@@ -18,6 +18,7 @@ export interface LLMConfig {
 
 export const DEFAULT_LLM_BASE_URL = 'https://api.deepseek.com/v1';
 export const DEFAULT_LLM_MODEL = 'deepseek-chat';
+export const DEFAULT_JUDGE_MODEL = 'deepseek-reasoner';
 
 /**
  * Read provider config from env. No silent fallback: a missing API key is a hard
@@ -34,6 +35,33 @@ export function getLLMConfig(overrides: Partial<LLMConfig> = {}): LLMConfig {
     apiKey,
     baseUrl: (overrides.baseUrl ?? process.env.LLM_BASE_URL ?? DEFAULT_LLM_BASE_URL).replace(/\/+$/, ''),
     model: overrides.model ?? process.env.LLM_MODEL ?? DEFAULT_LLM_MODEL,
+  };
+}
+
+/**
+ * Read the independent judge provider config. Reuses LLM_* for key/base when
+ * JUDGE_* is unset, but **enforces a different model** than the generator so a
+ * draft is never self-evaluated by the model that produced it.
+ */
+export function getJudgeConfig(overrides: Partial<LLMConfig> = {}): LLMConfig {
+  const generatorModel = process.env.LLM_MODEL ?? DEFAULT_LLM_MODEL;
+  const model = overrides.model ?? process.env.JUDGE_MODEL ?? DEFAULT_JUDGE_MODEL;
+  const apiKey = overrides.apiKey ?? process.env.JUDGE_API_KEY ?? process.env.LLM_API_KEY ?? '';
+  if (!apiKey) {
+    throw new Error(
+      'No judge API key: set JUDGE_API_KEY or LLM_API_KEY (JUDGE_* falls back to LLM_*).',
+    );
+  }
+  if (model === generatorModel) {
+    throw new Error(
+      `Judge model must differ from the generator model (both "${model}"). ` +
+        'Set JUDGE_MODEL to an independent model — no self-evaluation.',
+    );
+  }
+  return {
+    apiKey,
+    baseUrl: (overrides.baseUrl ?? process.env.JUDGE_BASE_URL ?? process.env.LLM_BASE_URL ?? DEFAULT_LLM_BASE_URL).replace(/\/+$/, ''),
+    model,
   };
 }
 

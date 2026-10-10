@@ -2,7 +2,7 @@ import type { FormData } from './types';
 import type { ContentTopic } from './radar/types';
 import { getPlatformSpec } from './platform-config';
 import { BANNED_WORDS } from './banned-words';
-import { buildKnowledgeBlock } from './knowledge/loader';
+import { buildKnowledgeBlock, loadMethodologyDoc } from './knowledge/loader';
 
 export function buildSystemPrompt(platform: string, aiDensity: number, wordCount: number): string {
   const spec = getPlatformSpec(platform);
@@ -162,6 +162,28 @@ ${focus}
 请完全按照${getPlatformSpec(platformId).name}平台的风格规范重新创作。`;
 }
 
+/** 标题爆款公式摘要(全文见 knowledge/methodology/title-formulas.md)。 */
+export function buildTitleFormulaBlock(): string {
+  return `## 标题爆款公式(套公式生成变体,再对爆款做 10–20% 去重微调)
+1. [人群/身份] + [扎心痛点/迫切需求]
+2. [打破固有认知] + [抛出新结论/留悬念]
+3. [极小成本的数字] + [极大效果的数字]
+4. [高浓度情绪词] + [引发强烈共鸣的场景/结果]
+5. [别人有多好/过去多差] VS [自己为什么差/现在多好]
+封面 4 类:大字报 / 实拍 / 截图 / 干货;3:4 竖图,配色 ≤ 3 种。`;
+}
+
+/** 发布前合规检查清单摘要(全文见 knowledge/compliance.md)。 */
+export function buildComplianceChecklistBlock(): string {
+  return `## 发布前合规检查清单(逐项自检)
+- 资料来源清楚(自己整理/原创,非搬运);无机构水印/课程/出版物扫描件/未授权内容。
+- 不夸大效果、不承诺收益/结果/录取/考试通过等不可保证事项。
+- 正文不出现站外联系方式或导流表达(微信/二维码/外链)。
+- 数据/数字必须有可追溯来源,禁止编造。
+- 医疗/心理/宠物健康类需加免责声明;AI 生成内容需标识。
+- 交付形式、适用人群、使用边界写清楚。`;
+}
+
 /** L2 生产:从一条雷达选题生成某平台 draft 的系统 prompt。 */
 export function buildTopicDraftSystemPrompt(platform: string, wordCount: number, aiDensity: number): string {
   const spec = getPlatformSpec(platform);
@@ -170,6 +192,10 @@ export function buildTopicDraftSystemPrompt(platform: string, wordCount: number,
 
 ## 知识库（产品档案 / 人设 / 合规词库）
 ${buildKnowledgeBlock()}
+
+${buildTitleFormulaBlock()}
+
+${buildComplianceChecklistBlock()}
 
 ## 硬性要求
 - 只依据下方选题提供的 corePoints 与 evidence 写作,禁止编造数字或来源;引用数据必须能对应到 evidence.url。
@@ -214,4 +240,24 @@ ${evidence || '  - (无直接信号)'}
 
 ## 标签参考
 ${(topic.tags ?? []).map((t) => `#${t.replace(/^#/, '')}`).join(' ') || '(无)'}`;
+}
+
+/** L5 方法论:对标拆解 prompt 模块(system 取 knowledge/methodology/competitor-teardown.md)。 */
+export function buildBenchmarkTeardownPrompt(material: string): { system: string; user: string } {
+  return {
+    system: `${loadMethodologyDoc('competitor-teardown')}
+
+你只输出结构化拆解结果(账号定位/爆款笔记/商品包装/可借鉴逻辑/禁止照搬),不照搬原文内容;拿不到的信息写「未获取」,不要编造。`,
+    user: `请拆解以下对标材料:\n\n${material}`,
+  };
+}
+
+/** L5 方法论:复盘 prompt 模块(system 取 knowledge/methodology/review.md)。 */
+export function buildReviewPrompt(metrics: string): { system: string; user: string } {
+  return {
+    system: `${loadMethodologyDoc('review')}
+
+你只输出复盘结论,分「事实 / 判断 / 待验证」三类,并给出下一步「只改一个变量」的动作;没有数据先记原因,不要编造。`,
+    user: `以下是本期数据与上下文,请做复盘:\n\n${metrics}`,
+  };
 }

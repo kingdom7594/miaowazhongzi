@@ -57,6 +57,13 @@ radar(L1) --contentBrief--> miaowazhongzi(L2) --draft--> skill-runner(L3) --imag
 - 运行时:Node(skill-runner 服务)+ bun(baoyu 脚本)+ Python(mondo)+ opencode(agent 技能运行时),
   与雷达 venv 隔离;密钥仅走 env。
 
+### L5 方法论层(miaowazhongzi 内置)
+- `src/lib/knowledge/methodology/`:对标拆解 / 复盘 / 标题爆款公式(模板/清单,无代码);`compliance.md` 含发布前检查清单与版权红线。
+- `src/lib/compliance/`:离线规则(违规词/绝对化用语/来源必填)+ **独立 LLM judge**;`getJudgeConfig()` 保证 judge 模型 ≠ 生成模型。
+- `src/lib/eval/`:内容质量 rubric(钩子/受众契合/依据/平台规范/原创性)+ 中位数非劣门(run 级聚合);CLI `pnpm eval:drafts`。
+- 回填 draft 可选字段:`compliance.checkedBy` / `scores.by`(及 `scores.audienceFit` / `scores.originality`)。
+- 详见 [ADR-0007](./adr/0007-l5-methodology-compliance-eval.md)。
+
 ## 5. 部署拓扑
 | 组件 | 位置 | 端口 | 管理 |
 |---|---|---|---|
@@ -72,6 +79,7 @@ radar(L1) --contentBrief--> miaowazhongzi(L2) --draft--> skill-runner(L3) --imag
 - [ADR-0004 L2–L5 内聚进 miaowazhongzi](./adr/0004-consolidate-into-miaowazhongzi.md)
 - [ADR-0005 文档 SSOT 落位与 docs-guard](./adr/0005-docs-ssot-and-guard.md)
 - [ADR-0006 L3 视觉采用 agent 技能运行时](./adr/0006-l3-agent-skill-runtime.md)
+- [ADR-0007 L5 方法论吸收 + 合规引擎 + 内容质量评估](./adr/0007-l5-methodology-compliance-eval.md)
 
 ## 7. 迭代指引(如何用本文档)
 - 新需求先问:**落在哪一层?改哪个契约?**

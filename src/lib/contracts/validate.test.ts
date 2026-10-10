@@ -11,7 +11,14 @@ describe('contract validation', () => {
       tags: ['#AI'],
       coverPrompt: 'cover',
       compliance: { passed: true, risks: [], checkedBy: 'rule+judge' },
-      scores: { hook: 8, evidence: 7, platformFit: 9, by: 'judge' },
+      scores: {
+        hook: 8,
+        audienceFit: 7,
+        evidence: 7,
+        platformFit: 9,
+        originality: 6,
+        by: 'judge',
+      },
     });
     expect(result.valid).toBe(true);
   });

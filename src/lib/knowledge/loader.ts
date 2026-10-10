@@ -20,16 +20,22 @@ const FILES = {
 
 export type KnowledgeDocName = keyof typeof FILES;
 
+/** L5 方法论知识文件(只含模板/清单,源自 xhs-virtual-product,无代码)。 */
+const METHODOLOGY_FILES = {
+  'competitor-teardown': 'competitor-teardown.md',
+  review: 'review.md',
+  'title-formulas': 'title-formulas.md',
+} as const;
+
+export type MethodologyDocName = keyof typeof METHODOLOGY_FILES;
+
 export function knowledgeDir(): string {
   return process.env.KNOWLEDGE_DIR ?? join(process.cwd(), 'src', 'lib', 'knowledge');
 }
 
-const cache = new Map<KnowledgeDocName, string>();
+const cache = new Map<string, string>();
 
-export function loadKnowledgeDoc(name: KnowledgeDocName): string {
-  const cached = cache.get(name);
-  if (cached !== undefined) return cached;
-  const filePath = join(knowledgeDir(), FILES[name]);
+function readKnowledgeFile(filePath: string): string {
   let content: string;
   try {
     content = readFileSync(filePath, 'utf8').trim();
@@ -39,7 +45,24 @@ export function loadKnowledgeDoc(name: KnowledgeDocName): string {
     );
   }
   if (!content) throw new Error(`Knowledge file is empty: ${filePath}`);
+  return content;
+}
+
+export function loadKnowledgeDoc(name: KnowledgeDocName): string {
+  const cached = cache.get(name);
+  if (cached !== undefined) return cached;
+  const content = readKnowledgeFile(join(knowledgeDir(), FILES[name]));
   cache.set(name, content);
+  return content;
+}
+
+/** Load an L5 methodology doc (see src/lib/knowledge/methodology/). */
+export function loadMethodologyDoc(name: MethodologyDocName): string {
+  const key = `methodology:${name}`;
+  const cached = cache.get(key);
+  if (cached !== undefined) return cached;
+  const content = readKnowledgeFile(join(knowledgeDir(), 'methodology', METHODOLOGY_FILES[name]));
+  cache.set(key, content);
   return content;
 }
 
@@ -64,6 +87,18 @@ export function buildKnowledgeBlock(): string {
     '## 合规词库',
     k.compliance,
   ].join('\n');
+}
+
+/** Assemble the L5 methodology block (teardown / review / title formulas). */
+export function buildMethodologyBlock(
+  names: MethodologyDocName[] = ['competitor-teardown', 'review', 'title-formulas'],
+): string {
+  const titles: Record<MethodologyDocName, string> = {
+    'competitor-teardown': '## 对标拆解',
+    review: '## 复盘',
+    'title-formulas': '## 标题爆款公式',
+  };
+  return names.map((name) => [titles[name], loadMethodologyDoc(name)].join('\n')).join('\n\n');
 }
 
 /** Parse the compliance markdown table into disallowed words + replacement hints. */

@@ -1,0 +1,42 @@
+{
+  "items": [
+    {
+      "topic": {
+        "id": "t-2026-10-10-01",
+        "headline": "AI 提示词集合,让写周报不再头疼",
+        "audience": "想用 AI 提效的职场人",
+        "corePoints": ["覆盖常见周报场景", "可直接复制使用", "按行业分类"],
+        "evidence": [
+          { "claim": "某周报模板月下载量 2 万", "source": "hn", "url": "https://example.com/weekly-report" }
+        ],
+        "platforms": ["xiaohongshu"]
+      },
+      "draft": {
+        "topicId": "t-2026-10-10-01",
+        "platform": "xiaohongshu",
+        "titles": ["写周报总卡壳?这套 AI 提示词帮你省下 2 小时"],
+        "body": "谁懂啊,每到周五写周报就头疼。\n\n我整理了一套 AI 提示词,覆盖常见周报场景,直接复制就能用。据来源,同类模板月下载量约 2 万,说明需求真实存在。\n\n按行业分好类,找到对应场景照着填就行。需要的话可以先收藏,下次写周报直接用。",
+        "tags": ["#职场", "#AI工具", "#效率提升", "#周报模板"]
+      }
+    },
+    {
+      "topic": {
+        "id": "t-2026-10-10-02",
+        "headline": "名著手绘 PPT 课件,让课堂更抓人",
+        "audience": "需要备课的中学语文老师",
+        "corePoints": ["经典名著视觉化", "可直接编辑", "含讲义大纲"],
+        "evidence": [
+          { "claim": "教师课件搜索量持续上升", "source": "rss", "url": "https://example.com/teacher-deck" }
+        ],
+        "platforms": ["xiaohongshu"]
+      },
+      "draft": {
+        "topicId": "t-2026-10-10-02",
+        "platform": "xiaohongshu",
+        "titles": ["名著课件还能这么美?手绘风 PPT 直接拿去上课"],
+        "body": "备课到深夜的老师看过来。\n\n我把几本经典名著做成了手绘风 PPT,视觉上更抓人,内容可以直接编辑。讲义大纲也一起整理好了。\n\n适合中学语文课堂,拿来就能用。先收藏,需要时随时取。",
+        "tags": ["#教师课件", "#PPT模板", "#名著阅读", "#备课"]
+      }
+    }
+  ]
+}

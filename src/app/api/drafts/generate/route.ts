@@ -1,8 +1,9 @@
 import { NextRequest } from 'next/server';
-import { collectChat, getLLMConfig } from '@/lib/ai/client';
+import { collectChat, getLLMConfig, getJudgeConfig } from '@/lib/ai/client';
 import { getTopic } from '@/lib/db/topics';
 import { insertDraft } from '@/lib/db/drafts';
-import { produceDraftsForTopic } from '@/lib/production/drafts';
+import { produceDraftsForTopicEvaluated } from '@/lib/production/pipeline';
+import type { JudgeCompleter } from '@/lib/compliance/judge';
 import type { ContentTopic } from '@/lib/radar/types';
 
 export const runtime = 'nodejs';
@@ -14,6 +15,7 @@ export async function POST(request: NextRequest) {
       platforms?: string[];
       wordCount?: number;
       aiDensity?: number;
+      skipEval?: boolean;
     };
     const topicId = body.topicId;
     if (!topicId) {
@@ -28,9 +30,27 @@ export async function POST(request: NextRequest) {
 
     const config = getLLMConfig();
     const topic: ContentTopic = topicRecord;
-    const results = await produceDraftsForTopic(topic, platforms, {
+
+    let evaluator;
+    if (!body.skipEval) {
+      const judgeConfig = getJudgeConfig();
+      const judgeCompleter: JudgeCompleter = ({ system, user, temperature }) =>
+        collectChat(
+          [
+            { role: 'system', content: system },
+            { role: 'user', content: user },
+          ],
+          { temperature },
+          judgeConfig,
+        );
+      evaluator = { judgeCompleter, judgeModel: judgeConfig.model };
+    }
+
+    const results = await produceDraftsForTopicEvaluated(topic, platforms, {
       wordCount: body.wordCount,
       aiDensity: body.aiDensity,
+      skipEval: body.skipEval,
+      evaluator,
       completer: ({ system, user, temperature }) =>
         collectChat(
           [

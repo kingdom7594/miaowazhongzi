@@ -158,8 +158,10 @@ export interface DraftCompliance {
 
 export interface DraftScores {
   hook?: number;
+  audienceFit?: number;
   evidence?: number;
   platformFit?: number;
+  originality?: number;
   by?: string;
 }
 
