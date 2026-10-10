@@ -110,10 +110,42 @@ describe('skill-runner HTTP', () => {
     const arg = run.mock.calls[0]![0];
     expect(arg.skill).toBe('baoyu-cover-image');
     expect(arg.prompt).toMatch(/baoyu-cover-image/);
-    expect(arg.env.OPENAI_BASE_URL).toBe(config.shimBaseUrl);
+    // 成本闸：会话 id 编入 shim base URL 路径。
+    expect(arg.env.OPENAI_BASE_URL).toMatch(new RegExp(`^${config.shimBaseUrl}/r/[0-9a-f-]{36}$`));
     const body = res.json();
     expect(body.files).toHaveLength(1);
     expect(body.meta.runtime).toBe('fake-agent');
+  });
+
+  it('composite render only returns NEW images from a reused output_dir (review #1)', async () => {
+    const config = makeConfig();
+    const sharedDir = join(config.outputRoot, 'shared');
+    await mkdir(sharedDir, { recursive: true });
+    await writeFile(join(sharedDir, 'old-from-previous-render.png'), PNG_1X1);
+    const app = buildServer(config, { provider: fakeProvider(), runner: fakeRunner, agent: fakeAgent() });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/render',
+      payload: { skill: 'baoyu-cover-image', inputs: { content: 'x' }, output_dir: sharedDir },
+    });
+    expect(res.statusCode).toBe(200);
+    const files = res.json().files as Array<{ path: string }>;
+    expect(files).toHaveLength(1);
+    expect(files[0]!.path).not.toMatch(/old-from-previous-render/);
+  });
+
+  it('composite render fail-fast 502s when IMAGE_API_KEY is missing', async () => {
+    const config = makeConfig({ image: { configured: false, apiKey: '' } });
+    const run = vi.fn(fakeAgent().run);
+    const app = buildServer(config, { provider: fakeProvider(), runner: fakeRunner, agent: { name: 'a', run } });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/render',
+      payload: { skill: 'baoyu-cover-image', inputs: { content: 'x' } },
+    });
+    expect(res.statusCode).toBe(502);
+    expect(res.json().code).toBe('not_configured');
+    expect(run).not.toHaveBeenCalled();
   });
 
   it('POST /render composite skill 502s when the agent fails', async () => {
@@ -185,5 +217,23 @@ describe('skill-runner HTTP', () => {
     const body = res.json();
     expect(body.data).toHaveLength(1);
     expect(body.data[0].b64_json).toBe(PNG_1X1.toString('base64'));
+  });
+
+  it('scoped shim enforces the per-render quota (review #2)', async () => {
+    const config = makeConfig({ maxImagesPerRender: 1, concurrency: 2 });
+    const app = buildServer(config, { provider: fakeProvider(), runner: fakeRunner, agent: fakeAgent() });
+    const first = await app.inject({
+      method: 'POST',
+      url: '/shim/v1/r/render-abc/images/generations',
+      payload: { prompt: 'a' },
+    });
+    expect(first.statusCode).toBe(200);
+    const second = await app.inject({
+      method: 'POST',
+      url: '/shim/v1/r/render-abc/images/generations',
+      payload: { prompt: 'b' },
+    });
+    expect(second.statusCode).toBe(502);
+    expect(second.json().code).toBe('quota_exceeded');
   });
 });

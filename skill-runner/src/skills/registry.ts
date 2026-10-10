@@ -1,4 +1,5 @@
 import { mkdir, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { VENDOR_DIR } from '../config.js';
 import { probeImageSize } from '../render/image-size.js';
@@ -22,17 +23,23 @@ async function renderPrompts({ ctx, prompts, filenamePrefix }: RenderImagesOptio
       `requested ${prompts.length} images but MAX_IMAGES_PER_RENDER=${config.maxImagesPerRender}`,
     );
   }
-  const results = await mapWithConcurrency(prompts, config.concurrency, (prompt, index) =>
-    provider.generate(
-      {
-        prompt,
-        aspectRatio: ctx.aspect,
-        filenameHint: `${filenamePrefix}-${String(index + 1).padStart(2, '0')}`,
-      },
-      ctx.outputDir,
-    ),
-  );
-  return results.map((image) => ({ path: image.localPath, width: image.width, height: image.height }));
+  const renderId = `direct:${randomUUID()}`;
+  try {
+    const results = await mapWithConcurrency(prompts, config.concurrency, (prompt, index) =>
+      provider.generate(
+        {
+          prompt,
+          aspectRatio: ctx.aspect,
+          filenameHint: `${filenamePrefix}-${String(index + 1).padStart(2, '0')}`,
+          renderId,
+        },
+        ctx.outputDir,
+      ),
+    );
+    return results.map((image) => ({ path: image.localPath, width: image.width, height: image.height }));
+  } finally {
+    provider.clearRender?.(renderId);
+  }
 }
 
 const baoyuImageGen: SkillHandler = {

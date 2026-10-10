@@ -9,6 +9,11 @@ export interface GenerateImageInput {
   model?: string;
   /** 产物文件名提示（不含目录） */
   filenameHint?: string;
+  /**
+   * 本次 render 的会话 id：用于在 provider 层做「单次 render 累计张数」成本闸。
+   * 直连路径与 agent(经 shim)路径共用同一 id 计数。
+   */
+  renderId?: string;
 }
 
 export interface GeneratedImage {
@@ -25,4 +30,6 @@ export interface GeneratedImage {
 export interface ImageProvider {
   readonly name: string;
   generate(input: GenerateImageInput, outputDir: string): Promise<GeneratedImage>;
+  /** 结束一次 render 会话，释放其计数（实现可选）。 */
+  clearRender?(renderId: string): void;
 }

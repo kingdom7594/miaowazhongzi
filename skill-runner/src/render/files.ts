@@ -10,10 +10,13 @@ export class PathSafetyError extends Error {
   }
 }
 
-/** 把外部传入的 output_dir 解析到 OUTPUT_ROOT 之内；越界显式报错。 */
+/**
+ * 把外部传入的 output_dir 解析到 OUTPUT_ROOT 之内；越界显式报错。
+ * 未传时落到**本次 render 唯一**的子目录（`<date>/<ts>-<rand>`），避免同日/复用目录互相污染。
+ */
 export function resolveOutputDir(requested: string | undefined, outputRoot: string): string {
   if (!requested || requested.trim() === '') {
-    return resolve(join(outputRoot, dateSlug(), 'default'));
+    return resolve(join(outputRoot, dateSlug(), `${Date.now()}-${randomUUID().slice(0, 8)}`));
   }
   if (!isAbsolute(requested)) {
     throw new PathSafetyError(`output_dir must be absolute: ${requested}`);

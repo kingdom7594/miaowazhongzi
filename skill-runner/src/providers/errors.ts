@@ -4,7 +4,8 @@ export type ProviderErrorCode =
   | 'task_failed'
   | 'content_empty'
   | 'download_failed'
-  | 'not_configured';
+  | 'not_configured'
+  | 'quota_exceeded';
 
 export class ProviderError extends Error {
   readonly code: ProviderErrorCode;

@@ -32,6 +32,9 @@ miaowazhongzi 通过本地 **skill-runner** 统一调用 baoyu / mondo 出图，
 > `references/` 模板组装 prompt→调出图后端)。skill-runner 通过**可替换的 agent 运行时适配器**驱动一个
 > 运行时(默认 opencode)无头执行其 SKILL.md;运行时内的出图后端经 **Shim → relay**。
 > **非确定 / 长耗时**:单次 render 可能数分钟,`AGENT_TIMEOUT_MS`(默认 600s)可调;接受用 **skill 版本 pin + E2E smoke** 断言。
+> **成本闸**:provider 层统一施加**全局并发**(`RENDER_CONCURRENCY`)+ **单次 render 累计张数**(`MAX_IMAGES_PER_RENDER`),
+> 直连与 shim/agent 路径同样受限(会话 id 编入 shim base URL 路径 `/shim/v1/r/<id>`)。
+> **`aspect` 约束**:组装式 skill 的 `aspect` 目前仅作为 prompt 文本提示,不对返回图尺寸做强校验(待补)。
 
 ### `POST /shim/v1/images/generations`（OpenAI 兼容同步 shim）
 把同步 `/images/generations` 语义 translate 到中转站的**异步任务式**链路，返回 `{ data:[{ b64_json }] }`。

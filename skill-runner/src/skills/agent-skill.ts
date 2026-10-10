@@ -1,7 +1,8 @@
 import { access, mkdir, readFile, readdir, symlink, writeFile } from 'node:fs/promises';
 import { constants } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
-import type { SkillRunnerConfig } from '../config.js';
+import { requireImageConfig, type SkillRunnerConfig } from '../config.js';
 import { probeImageSize } from '../render/image-size.js';
 import { InputError, readString } from './prompts.js';
 import type { RenderContext, RenderResult, RenderedFile, SkillHandler, SkillName } from './types.js';
@@ -56,10 +57,13 @@ async function writeExtendMd(outputDir: string, skill: string): Promise<void> {
   await writeFile(join(dir, 'EXTEND.md'), extend, 'utf-8');
 }
 
-/** 运行时环境：出图后端指向本服务的 OpenAI 兼容 shim，再由 shim → relay。 */
-export function buildAgentEnv(config: SkillRunnerConfig): NodeJS.ProcessEnv {
+/**
+ * 运行时环境：出图后端指向本服务的 OpenAI 兼容 shim，再由 shim → relay。
+ * `renderId` 编入 base URL 路径（`/shim/v1/r/<id>`），使该次 render 的所有出图调用在 provider 层累计计数（成本闸）。
+ */
+export function buildAgentEnv(config: SkillRunnerConfig, renderId: string): NodeJS.ProcessEnv {
   return {
-    OPENAI_BASE_URL: config.shimBaseUrl,
+    OPENAI_BASE_URL: `${config.shimBaseUrl}/r/${renderId}`,
     OPENAI_API_KEY: 'skill-runner-shim',
     OPENAI_IMAGE_MODEL: config.image.model,
   };
@@ -85,9 +89,10 @@ export function buildSkillPrompt(skill: string, content: string, aspect: string 
     .join('\n');
 }
 
-export async function collectImages(root: string, depth = 0): Promise<RenderedFile[]> {
+/** 递归列出目录下的图片文件路径（跳过隐藏目录与 node_modules 等）。 */
+export async function listImagePaths(root: string, depth = 0): Promise<string[]> {
   if (depth > 6) return [];
-  const out: RenderedFile[] = [];
+  const out: string[] = [];
   let entries;
   try {
     entries = await readdir(root, { withFileTypes: true });
@@ -98,20 +103,32 @@ export async function collectImages(root: string, depth = 0): Promise<RenderedFi
     if (entry.name.startsWith('.') || SKIP_DIRS.has(entry.name)) continue;
     const full = join(root, entry.name);
     if (entry.isDirectory()) {
-      out.push(...(await collectImages(full, depth + 1)));
+      out.push(...(await listImagePaths(full, depth + 1)));
       continue;
     }
     const ext = entry.name.slice(entry.name.lastIndexOf('.')).toLowerCase();
-    if (!IMAGE_EXTENSIONS.has(ext)) continue;
+    if (IMAGE_EXTENSIONS.has(ext)) out.push(full);
+  }
+  return out;
+}
+
+/** 把图片路径读成 {path,width,height}。 */
+export async function toRenderedFiles(paths: string[]): Promise<RenderedFile[]> {
+  const out: RenderedFile[] = [];
+  for (const path of paths) {
     try {
-      const bytes = await readFile(full);
+      const bytes = await readFile(path);
       const size = probeImageSize(bytes);
-      out.push({ path: full, width: size.width, height: size.height });
+      out.push({ path, width: size.width, height: size.height });
     } catch {
       continue;
     }
   }
   return out;
+}
+
+export async function collectImages(root: string): Promise<RenderedFile[]> {
+  return toRenderedFiles(await listImagePaths(root));
 }
 
 async function exists(path: string): Promise<boolean> {
@@ -133,41 +150,52 @@ export function createAgentSkillHandler(skill: SkillName): SkillHandler {
     name: skill,
     inputsDoc: 'inputs.content (string, 必需) + 可选等；由 agent 运行时加载该 skill 端到端执行',
     async render(ctx: RenderContext): Promise<RenderResult> {
+      const { agent, config, provider } = ctx.deps;
+      // fail-fast：缺 IMAGE_API_KEY 时不要在跑完 LLM+agent 后才 502。
+      requireImageConfig(config);
       const content = readString(ctx.inputs, 'content') ?? readString(ctx.inputs, 'prompt');
       if (!content || !content.trim()) {
         throw new InputError(`inputs.content (string) is required for ${skill}`);
       }
-      const { agent, config } = ctx.deps;
+      const renderId = randomUUID();
       await ensureAgentProject(ctx.outputDir, skill, config);
+      // 渲染前快照：只返回本次新增图，避免复用/共享 output_dir 时把旧图当本次产出（review #1）。
+      const before = new Set(await listImagePaths(ctx.outputDir));
       const prompt = buildSkillPrompt(skill, content.trim(), ctx.aspect);
       const startedAt = Date.now();
-      const result = await agent.run({
-        skill,
-        prompt,
-        workDir: ctx.outputDir,
-        env: buildAgentEnv(config),
-        timeoutMs: config.agent.timeoutMs,
-      });
-      const durationMs = Date.now() - startedAt;
-      if (result.code !== 0) {
-        throw new AgentError(
-          `agent runtime "${agent.name}" exited ${result.code} for ${skill}: ${result.stderr.slice(-800)}`,
-        );
-      }
-      const files = await collectImages(ctx.outputDir);
-      if (files.length === 0) {
-        throw new AgentError(`agent runtime "${agent.name}" produced no image files for ${skill}`);
-      }
-      return {
-        files,
-        meta: {
+      try {
+        const result = await agent.run({
           skill,
-          runtime: agent.name,
-          model: config.agent.model,
-          durationMs,
-          command: result.command,
-        },
-      };
+          prompt,
+          workDir: ctx.outputDir,
+          env: buildAgentEnv(config, renderId),
+          timeoutMs: config.agent.timeoutMs,
+        });
+        const durationMs = Date.now() - startedAt;
+        if (result.code !== 0) {
+          throw new AgentError(
+            `agent runtime "${agent.name}" exited ${result.code} for ${skill}: ${result.stderr.slice(-800)}`,
+          );
+        }
+        const after = await listImagePaths(ctx.outputDir);
+        const fresh = after.filter((path) => !before.has(path));
+        if (fresh.length === 0) {
+          throw new AgentError(`agent runtime "${agent.name}" produced no new image files for ${skill}`);
+        }
+        const files = await toRenderedFiles(fresh);
+        return {
+          files,
+          meta: {
+            skill,
+            runtime: agent.name,
+            model: config.agent.model,
+            durationMs,
+            command: result.command,
+          },
+        };
+      } finally {
+        provider.clearRender?.(renderId);
+      }
     },
   };
 }

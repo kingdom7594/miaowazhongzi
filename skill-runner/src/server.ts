@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { createAgentRuntime, type AgentRuntime } from './agent/index.js';
 import { createCommandRunner, type CommandRunner } from './command/runner.js';
 import { loadConfig, type SkillRunnerConfig } from './config.js';
-import { createProvider, ProviderError, type ImageProvider } from './providers/index.js';
+import { createProvider, GuardedProvider, ProviderError, type ImageProvider } from './providers/index.js';
 import { resolveOutputDir, PathSafetyError } from './render/files.js';
 import { AgentError } from './skills/agent-skill.js';
 import { getHandler, SKILL_HANDLERS } from './skills/registry.js';
@@ -26,9 +26,11 @@ export interface ServerDeps {
 
 export function createDeps(config: SkillRunnerConfig, overrides: Partial<ServerDeps> = {}): SkillDeps {
   const runner = overrides.runner ?? createCommandRunner();
+  const rawProvider = overrides.provider ?? createProvider(config);
   return {
     config,
-    provider: overrides.provider ?? createProvider(config),
+    // 成本闸对直连与 shim/agent 所有路径统一生效（ADR-0006）。
+    provider: new GuardedProvider(rawProvider, config.maxImagesPerRender, config.concurrency),
     runner,
     agent: overrides.agent ?? createAgentRuntime(config, runner),
   };
