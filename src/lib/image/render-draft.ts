@@ -1,5 +1,6 @@
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { renderImage } from './client';
+import { withBasePath } from '@/lib/base-path';
 import type { Draft, DraftImage } from '@/lib/types';
 
 /** 应用层可选用的出图技能(draft 出图):封面单图 / 小红书卡片图组。 */
@@ -99,7 +100,7 @@ export interface DraftImageView extends DraftImage {
 export function toRenderUrl(filePath: string, root: string = getRenderOutputRoot()): string | null {
   const rel = relative(resolve(root), resolve(filePath));
   if (rel === '' || rel.startsWith('..') || isAbsolute(rel)) return null;
-  return `/api/renders/${rel.split(sep).map(encodeURIComponent).join('/')}`;
+  return withBasePath(`/api/renders/${rel.split(sep).map(encodeURIComponent).join('/')}`);
 }
 
 export function withImageUrls(

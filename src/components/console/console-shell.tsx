@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { BASE_PATH } from '@/lib/base-path';
 import {
   Radar,
   Sparkles,
@@ -30,7 +31,10 @@ const NAV: NavItem[] = [
 ];
 
 export function ConsoleShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+  const rawPathname = usePathname();
+  const pathname = BASE_PATH && rawPathname.startsWith(BASE_PATH)
+    ? rawPathname.slice(BASE_PATH.length) || '/'
+    : rawPathname;
   const active = NAV.find((n) => pathname.startsWith(n.href));
 
   return (

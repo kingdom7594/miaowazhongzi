@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Badge, Card, CardHeader, EmptyState, Alert } from '@/components/console/ui';
+import { withBasePath } from '@/lib/base-path';
 
 interface Health {
   ok: boolean;
@@ -21,7 +22,10 @@ export default function SettingsPage() {
   useEffect(() => {
     (async () => {
       try {
-        const [h, k] = await Promise.all([fetch('/api/health'), fetch('/api/knowledge')]);
+        const [h, k] = await Promise.all([
+          fetch(withBasePath('/api/health')),
+          fetch(withBasePath('/api/knowledge')),
+        ]);
         const hd = await h.json();
         const kd = await k.json();
         setHealth(hd);

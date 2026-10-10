@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Image as ImageIcon, Loader2 } from 'lucide-react';
 import { Alert, Badge, Button, Card, CardHeader, Chip, EmptyState } from '@/components/console/ui';
+import { withBasePath } from '@/lib/base-path';
 
 interface DraftImageView {
   skill?: string;
@@ -42,7 +43,7 @@ export default function VisualPage() {
   const load = useCallback(async () => {
     setLoadingDrafts(true);
     try {
-      const res = await fetch('/api/drafts');
+      const res = await fetch(withBasePath('/api/drafts'));
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? '加载稿件失败');
       const list = (data.drafts ?? []) as DraftRow[];
@@ -72,7 +73,7 @@ export default function VisualPage() {
     setError(null);
     setNotice(null);
     try {
-      const res = await fetch('/api/drafts/render', {
+      const res = await fetch(withBasePath('/api/drafts/render'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ draftId, skill, aspect }),

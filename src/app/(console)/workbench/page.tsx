@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { Badge, Button, Card, CardHeader, Chip, EmptyState, Alert } from '@/components/console/ui';
+import { withBasePath } from '@/lib/base-path';
 import type { ContentTopic } from '@/lib/radar/types';
 import type { Draft } from '@/lib/types';
 
@@ -35,7 +36,7 @@ export default function WorkbenchPage() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/topics');
+      const res = await fetch(withBasePath('/api/topics'));
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? '加载选题失败');
       const list = (data.topics ?? []) as TopicRow[];
@@ -65,7 +66,7 @@ export default function WorkbenchPage() {
     setDrafts([]);
     setErrors([]);
     try {
-      const res = await fetch('/api/drafts/generate', {
+      const res = await fetch(withBasePath('/api/drafts/generate'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ topicId, platforms, aiDensity }),
