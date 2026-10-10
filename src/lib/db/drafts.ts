@@ -99,6 +99,14 @@ export function updateDraftEvaluation(
   return Number(result.changes) > 0;
 }
 
+/** 回填 L3 出图结果(images)。整表替换本次 draft 的图片引用数组。 */
+export function updateDraftImages(id: number, images: Draft['images'], db: DatabaseSync = getDb()): boolean {
+  const result = db
+    .prepare('UPDATE drafts SET images_json = ?, updated_at = ? WHERE id = ?')
+    .run(JSON.stringify(images ?? []), new Date().toISOString(), id);
+  return Number(result.changes) > 0;
+}
+
 export function updateDraftStatus(id: number, status: DraftStatus, db: DatabaseSync = getDb()): boolean {
   const result = db
     .prepare('UPDATE drafts SET status = ?, updated_at = ? WHERE id = ?')

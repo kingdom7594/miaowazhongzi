@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { RefreshCw, ArrowRight, Database } from 'lucide-react';
 import { Badge, Button, Card, EmptyState, Alert } from '@/components/console/ui';
+import { withBasePath } from '@/lib/base-path';
 import type { ContentTopic } from '@/lib/radar/types';
 
 interface TopicRow extends ContentTopic {
@@ -22,7 +23,7 @@ export default function TopicPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/topics');
+      const res = await fetch(withBasePath('/api/topics'));
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? '加载选题失败');
       setTopics(data.topics ?? []);
@@ -42,7 +43,7 @@ export default function TopicPage() {
     setMessage(null);
     setError(null);
     try {
-      const res = await fetch('/api/radar/ingest', {
+      const res = await fetch(withBasePath('/api/radar/ingest'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),

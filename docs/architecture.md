@@ -43,7 +43,11 @@ radar(L1) --contentBrief--> miaowazhongzi(L2) --draft--> skill-runner(L3) --imag
 - `src/lib/radar`:拉 `/api/content`,选题入库/去重/追溯。
 - `src/lib/knowledge`:产品档案/人设/合规词库注入。
 - `src/lib/compliance`:规则 + 独立 judge。
-- `src/lib/image`:调 skill-runner。
+- `src/lib/image`:调 skill-runner 出图。`client.ts` 为 HTTP 契约;`render-draft.ts` 组装 draft→`inputs.content`、
+  调 `/render`(封面 `baoyu-cover-image` / 卡片 `baoyu-xhs-images`)、回写 `drafts.images`(同技能替换)并把
+  skill-runner 绝对路径映射为 app 预览 url(限制在 `RENDER_OUTPUT_ROOT` 内)。
+- API:`POST /api/drafts/render {draftId, skill, aspect?, count?}`(L2→L3,失败 502 不 mock)、
+  `GET /api/renders/[...path]`(只读预览产物,越界 404);`/visual` 控制台接线(选 draft → 选 skill → 出图 → 预览)。
 - `src/lib/publish`:分发适配器。
 - SQLite:选题库 / 稿件库 / 发布记录。
 
@@ -71,7 +75,15 @@ radar(L1) --contentBrief--> miaowazhongzi(L2) --draft--> skill-runner(L3) --imag
 | radar-dashboard | 当前服务器 | 127.0.0.1:5080 | systemd(`radar-*`) |
 | radar 网关 | nginx | radar.*.nip.io | basic auth |
 | skill-runner | 当前服务器 | 127.0.0.1:5090 | systemd(`skill-runner`) |
-| miaowazhongzi | 待定 | TBD | TBD |
+| miaowazhongzi | 当前服务器 + edge 网关 | 127.0.0.1:3008(网关路径 `/miaowazhongzi/`) | systemd(`miaowazhongzi`) |
+
+#### 网关路径模式(basePath 约定)
+生产经统一网关以子路径 `/miaowazhongzi/` 暴露,Next 的 `basePath` 由构建期环境变量
+`NEXT_PUBLIC_BASE_PATH` 注入(见 `next.config.ts`),且**须与网关代理路径、systemd 服务
+`Environment=NEXT_PUBLIC_BASE_PATH=` 三处取值一致**,否则单次登录后 API/静态资源会 404。
+本地开发 / CI 不设置即为空串,行为与无前缀时一致。`next/link`、`next/navigation` 会自动带
+prefix;`fetch()` 与服务端生成的绝对链接不会,统一用 `src/lib/base-path.ts` 的
+`withBasePath()` 包裹(客户端 API 调用、渲染产物预览 URL、shell 内 `usePathname` 去前缀)。
 
 ## 6. 关键决策(ADR 索引)
 - [ADR-0001 雷达只做上游选题源](./adr/0001-radar-as-upstream.md)

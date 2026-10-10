@@ -7,6 +7,7 @@ import {
   FormData, RESOURCE_TYPES, PLATFORM_OPTIONS, STYLE_OPTIONS, GUIDANCE_OPTIONS, COUNT_OPTIONS,
   GeneratedNote, ANGLE_COLORS, POSTING_TIME_SUGGESTIONS,
 } from "@/lib/types";
+import { withBasePath } from "@/lib/base-path";
 import {
   Shuffle, Heart, BookOpen, Zap, Scale, PenLine, Sparkles, Copy, Check,
   AlertTriangle, Shield, Clock, Image, TrendingUp, ChevronDown, ChevronUp, Loader2,
@@ -40,7 +41,7 @@ export function HomePage() {
     setStreamContent("");
 
     try {
-      const response = await fetch("/api/generate", {
+      const response = await fetch(withBasePath("/api/generate"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ formData }),

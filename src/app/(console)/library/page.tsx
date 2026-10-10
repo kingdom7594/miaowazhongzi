@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Badge, Card, CardHeader, EmptyState, Alert } from '@/components/console/ui';
+import { withBasePath } from '@/lib/base-path';
 import type { DraftRecord, PublicationRecord } from '@/lib/types';
 
 export default function LibraryPage() {
@@ -13,7 +14,7 @@ export default function LibraryPage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/api/drafts');
+        const res = await fetch(withBasePath('/api/drafts'));
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? '加载稿件失败');
         setDrafts(data.drafts ?? []);
