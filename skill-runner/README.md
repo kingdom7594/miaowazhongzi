@@ -65,6 +65,9 @@ pnpm build && node dist/bin/start.js
 systemd unit 模板见 [`deploy/skill-runner.service`](./deploy/skill-runner.service)（由 ops-agent 落地）。
 依赖：Node ≥ 22（服务本身）；`bun`（baoyu 脚本）；`python3`（mondo prompt 组装）。
 
+主机运行时安装方式、版本、路径见 [`deploy/HOST-PREREQS.md`](./deploy/HOST-PREREQS.md)
+（本机已装 `bun 1.4.3`；libreoffice 经评估**非必需**）。
+
 ## vendored 依赖
 
 上游 skill 以 pin 快照随仓分发，见 [`vendor/VENDOR.md`](./vendor/VENDOR.md)。
