@@ -1,13 +1,18 @@
-import { mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { SkillRunnerConfig } from '../src/config.js';
 
-type ConfigOverrides = Partial<Omit<SkillRunnerConfig, 'image'>> & { image?: Partial<SkillRunnerConfig['image']> };
+type ConfigOverrides = Partial<Omit<SkillRunnerConfig, 'image' | 'agent'>> & {
+  image?: Partial<SkillRunnerConfig['image']>;
+  agent?: Partial<SkillRunnerConfig['agent']>;
+};
 
 export function makeConfig(overrides: ConfigOverrides = {}): SkillRunnerConfig {
   const outputRoot = overrides.outputRoot ?? mkdtempSync(join(tmpdir(), 'skill-runner-'));
-  const { image: imageOverride, ...rest } = overrides;
+  // 预置一个假的 vendored skills 目录，供 ensureAgentProject 软链。
+  mkdirSync(join(outputRoot, 'vendor-skills', 'baoyu-cover-image'), { recursive: true });
+  const { image: imageOverride, agent: agentOverride, ...rest } = overrides;
   return {
     host: '127.0.0.1',
     port: 5090,
@@ -19,6 +24,14 @@ export function makeConfig(overrides: ConfigOverrides = {}): SkillRunnerConfig {
     pythonBin: 'python3',
     shimBaseUrl: 'http://127.0.0.1:5090/shim/v1',
     ...rest,
+    agent: {
+      runtime: 'opencode',
+      bin: 'opencode',
+      model: 'opencode-go/deepseek-v4.1-flash',
+      timeoutMs: 600000,
+      skillsDir: join(outputRoot, 'vendor-skills'),
+      ...(agentOverride ?? {}),
+    },
     image: {
       baseUrl: 'https://relay.example.test/v1',
       apiKey: 'test-key',

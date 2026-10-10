@@ -1,5 +1,9 @@
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { ProviderError } from './providers/errors.js';
+
+/** vendored 上游 skill 根目录（src/ 与 dist/ 同深度）。 */
+export const VENDOR_DIR = fileURLToPath(new URL('../vendor/', import.meta.url));
 
 export interface ImageConfig {
   baseUrl: string;
@@ -12,10 +16,24 @@ export interface ImageConfig {
   configured: boolean;
 }
 
+export interface AgentConfig {
+  /** 可替换的 agent 运行时标识；目前实现 `opencode`。 */
+  runtime: string;
+  /** 运行时可执行文件。 */
+  bin: string;
+  /** 运行时加载 SKILL.md 所需的 LLM（provider/model）。 */
+  model: string;
+  /** 单次 render 的 agent 运行超时（文档：异步/长超时）。 */
+  timeoutMs: number;
+  /** 供运行时加载的 vendored skills 目录。 */
+  skillsDir: string;
+}
+
 export interface SkillRunnerConfig {
   host: string;
   port: number;
   image: ImageConfig;
+  agent: AgentConfig;
   outputRoot: string;
   retentionDays: number;
   maxImagesPerRender: number;
@@ -56,6 +74,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SkillRunnerCon
       pollIntervalMs: intEnv('IMAGE_POLL_INTERVAL_MS', 2000),
       pollTimeoutMs: intEnv('IMAGE_POLL_TIMEOUT_MS', 300000),
       configured: apiKey.length > 0,
+    },
+    agent: {
+      runtime: (env.AGENT_RUNTIME ?? 'opencode').trim(),
+      bin: (env.AGENT_BIN ?? 'opencode').trim(),
+      model: (env.AGENT_MODEL ?? 'opencode-go/deepseek-v4.1-flash').trim(),
+      timeoutMs: intEnv('AGENT_TIMEOUT_MS', 600000),
+      skillsDir: resolve(env.AGENT_SKILLS_DIR ?? `${VENDOR_DIR}baoyu-skills/skills`),
     },
     outputRoot: resolve(env.OUTPUT_ROOT ?? './data/renders'),
     retentionDays: intEnv('RENDER_RETENTION_DAYS', 30),

@@ -1,5 +1,6 @@
 import type { SkillRunnerConfig } from '../config.js';
 import type { CommandRunner } from '../command/runner.js';
+import type { AgentRuntime } from '../agent/types.js';
 import type { ImageProvider } from '../providers/types.js';
 
 export const SKILL_NAMES = [
@@ -29,6 +30,7 @@ export interface SkillDeps {
   config: SkillRunnerConfig;
   provider: ImageProvider;
   runner: CommandRunner;
+  agent: AgentRuntime;
 }
 
 export interface RenderContext {

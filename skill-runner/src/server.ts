@@ -1,9 +1,11 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { createAgentRuntime, type AgentRuntime } from './agent/index.js';
 import { createCommandRunner, type CommandRunner } from './command/runner.js';
 import { loadConfig, type SkillRunnerConfig } from './config.js';
 import { createProvider, ProviderError, type ImageProvider } from './providers/index.js';
 import { resolveOutputDir, PathSafetyError } from './render/files.js';
+import { AgentError } from './skills/agent-skill.js';
 import { getHandler, SKILL_HANDLERS } from './skills/registry.js';
 import { InputError } from './skills/prompts.js';
 import { SKILL_NAMES, type SkillDeps, type SkillName } from './skills/types.js';
@@ -19,13 +21,16 @@ export const renderBodySchema = z.object({
 export interface ServerDeps {
   provider: ImageProvider;
   runner: CommandRunner;
+  agent: AgentRuntime;
 }
 
 export function createDeps(config: SkillRunnerConfig, overrides: Partial<ServerDeps> = {}): SkillDeps {
+  const runner = overrides.runner ?? createCommandRunner();
   return {
     config,
     provider: overrides.provider ?? createProvider(config),
-    runner: overrides.runner ?? createCommandRunner(),
+    runner,
+    agent: overrides.agent ?? createAgentRuntime(config, runner),
   };
 }
 
@@ -41,6 +46,13 @@ export function buildServer(config: SkillRunnerConfig, deps?: Partial<ServerDeps
       model: config.image.model,
       baseUrl: config.image.baseUrl,
       apiStyle: config.image.apiStyle,
+    },
+    agent: {
+      runtime: config.agent.runtime,
+      bin: config.agent.bin,
+      model: config.agent.model,
+      skillsDir: config.agent.skillsDir,
+      timeoutMs: config.agent.timeoutMs,
     },
     outputRoot: config.outputRoot,
     limits: {
@@ -81,6 +93,9 @@ export function buildServer(config: SkillRunnerConfig, deps?: Partial<ServerDeps
     }
     if (error instanceof ProviderError) {
       return reply.code(502).send({ error: error.message, code: error.code });
+    }
+    if (error instanceof AgentError) {
+      return reply.code(502).send({ error: error.message, code: 'agent_failed' });
     }
     const message = error instanceof Error ? error.message : String(error);
     return reply.code(500).send({ error: message });

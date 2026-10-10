@@ -14,7 +14,7 @@
 |---|---|---|---|
 | L1 | 信号层 | radar-dashboard(独立部署) | 采集 23 源 → 日报 → **内容选题 brief**;对外 `GET /api/content` |
 | L2 | 生产层 | miaowazhongzi | 读选题 + 知识库 → 多平台文案(draft) |
-| L3 | 视觉层 | miaowazhongzi + skill-runner | 卡片图/封面/信息图/PPT/图解(调 baoyu/mondo) |
+| L3 | 视觉层 | miaowazhongzi + skill-runner | 卡片图/封面/信息图/PPT/图解(经 agent 技能运行时加载 baoyu/mondo skill) |
 | L4 | 分发层 | miaowazhongzi + worker | 公众号(API)、微博/X(外部 worker);人工放行 |
 | L5 | 方法论层 | miaowazhongzi(内置) | xhs-virtual-product 的清单/公式/合规,注入 prompt 与审核 |
 
@@ -48,17 +48,22 @@ radar(L1) --contentBrief--> miaowazhongzi(L2) --draft--> skill-runner(L3) --imag
 - SQLite:选题库 / 稿件库 / 发布记录。
 
 ### L3 skill-runner(独立进程)
-- 统一 HTTP 契约 `POST /render {skill, inputs, aspect}` → 图片文件。
-- 封装 baoyu-cover-image / baoyu-xhs-images / baoyu-infographic / baoyu-slide-deck / baoyu-diagram / mondo。
-- 运行时:Node/bun(baoyu)+ Python(mondo),与雷达 venv 隔离。
+- 统一 HTTP 契约 `POST /render {skill, inputs, aspect, output_dir}` → 图片文件;`GET /health`。
+- **组装式 skill**(xhs-images / cover-image / infographic / slide-deck)由 **agent 技能运行时**(默认 opencode,
+  可替换适配器 `AgentRuntime`)无头加载其 SKILL.md 执行「分析 → 组装 prompt → 出图」全流程(ADR-0006)。
+- 出图后端 `baoyu-image-gen` 走本服务的 OpenAI 兼容 **Shim**(`POST /shim/v1/images/generations`)→ 中转站
+  异步任务式 provider(submit→poll→content→download)。
+- `baoyu-diagram`(SVG)、`mondo`(确定性 prompt 组装 + 渲染)为直接适配器。
+- 运行时:Node(skill-runner 服务)+ bun(baoyu 脚本)+ Python(mondo)+ opencode(agent 技能运行时),
+  与雷达 venv 隔离;密钥仅走 env。
 
 ## 5. 部署拓扑
 | 组件 | 位置 | 端口 | 管理 |
 |---|---|---|---|
 | radar-dashboard | 当前服务器 | 127.0.0.1:5080 | systemd(`radar-*`) |
 | radar 网关 | nginx | radar.*.nip.io | basic auth |
+| skill-runner | 当前服务器 | 127.0.0.1:5090 | systemd(`skill-runner`) |
 | miaowazhongzi | 待定 | TBD | TBD |
-| skill-runner | 待定 | TBD | TBD |
 
 ## 6. 关键决策(ADR 索引)
 - [ADR-0001 雷达只做上游选题源](./adr/0001-radar-as-upstream.md)
@@ -66,6 +71,7 @@ radar(L1) --contentBrief--> miaowazhongzi(L2) --draft--> skill-runner(L3) --imag
 - [ADR-0003 数据层选型 SQLite](./adr/0003-sqlite.md)
 - [ADR-0004 L2–L5 内聚进 miaowazhongzi](./adr/0004-consolidate-into-miaowazhongzi.md)
 - [ADR-0005 文档 SSOT 落位与 docs-guard](./adr/0005-docs-ssot-and-guard.md)
+- [ADR-0006 L3 视觉采用 agent 技能运行时](./adr/0006-l3-agent-skill-runtime.md)
 
 ## 7. 迭代指引(如何用本文档)
 - 新需求先问:**落在哪一层?改哪个契约?**
@@ -78,3 +84,4 @@ radar(L1) --contentBrief--> miaowazhongzi(L2) --draft--> skill-runner(L3) --imag
 - 合规/ToS(收入数据来源、AI 标识、自动发布)→ 人审闸门。
 - 成本(日更 + 多平台 + 出图)→ 配额。
 - 反馈回流难自动化 → 半闭环。
+- L3 agent 技能运行时**非确定 + 长耗时**(本地实测封面 ~3 min)+ 成本放大 → skill 版本 pin + E2E smoke 断言 + 成本闸(≤10 张/并发 2)。

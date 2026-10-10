@@ -1,12 +1,13 @@
 import { mkdir, writeFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
+import { VENDOR_DIR } from '../config.js';
 import { probeImageSize } from '../render/image-size.js';
 import { makeImageFilename } from '../render/files.js';
+import { createAgentSkillHandler } from './agent-skill.js';
 import { collectPrompts, InputError, mapWithConcurrency, readString } from './prompts.js';
 import type { RenderContext, RenderResult, RenderedFile, SkillHandler, SkillName } from './types.js';
 
-export const VENDOR_DIR = fileURLToPath(new URL('../../vendor/', import.meta.url));
+export { VENDOR_DIR };
 
 interface RenderImagesOptions {
   ctx: RenderContext;
@@ -32,33 +33,6 @@ async function renderPrompts({ ctx, prompts, filenamePrefix }: RenderImagesOptio
     ),
   );
   return results.map((image) => ({ path: image.localPath, width: image.width, height: image.height }));
-}
-
-/**
- * 组装式 skill（xhs-images / cover-image / infographic / slide-deck）。
- *
- * ⚠️ MVP 形态：接受**已组装好的 prompts**（inputs.prompt / inputs.prompts），逐张渲染。
- * baoyu 的这几个 skill 本质是「agent 工作流」——内容分析 + 按 references/ 模板组装 prompt
- * 需要 LLM；prompt 组装归属（L2 组装 vs skill-runner 内置 LLM）待 owner 裁决，见 M3 issue。
- */
-function promptListHandler(name: SkillName, filenamePrefix: string): SkillHandler {
-  return {
-    name,
-    inputsDoc: 'inputs.prompt (string) | inputs.prompts (string[]) — 已按 baoyu 模板组装好的最终 prompt',
-    async render(ctx) {
-      const prompts = collectPrompts(ctx.inputs);
-      const files = await renderPrompts({ ctx, prompts, filenamePrefix });
-      return {
-        files,
-        meta: {
-          skill: name,
-          provider: ctx.deps.provider.name,
-          model: ctx.deps.config.image.model,
-          note: 'prompt-assembled input (semantic assembly pending owner decision)',
-        },
-      };
-    },
-  };
 }
 
 const baoyuImageGen: SkillHandler = {
@@ -134,10 +108,10 @@ const mondo: SkillHandler = {
 };
 
 export const SKILL_HANDLERS: Record<SkillName, SkillHandler> = {
-  'baoyu-xhs-images': promptListHandler('baoyu-xhs-images', 'xhs'),
-  'baoyu-cover-image': promptListHandler('baoyu-cover-image', 'cover'),
-  'baoyu-infographic': promptListHandler('baoyu-infographic', 'infographic'),
-  'baoyu-slide-deck': promptListHandler('baoyu-slide-deck', 'slide'),
+  'baoyu-xhs-images': createAgentSkillHandler('baoyu-xhs-images'),
+  'baoyu-cover-image': createAgentSkillHandler('baoyu-cover-image'),
+  'baoyu-infographic': createAgentSkillHandler('baoyu-infographic'),
+  'baoyu-slide-deck': createAgentSkillHandler('baoyu-slide-deck'),
   'baoyu-image-gen': baoyuImageGen,
   'baoyu-diagram': baoyuDiagram,
   mondo,

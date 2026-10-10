@@ -12,25 +12,26 @@ miaowazhongzi 通过本地 **skill-runner** 统一调用 baoyu / mondo 出图，
 
 ### `POST /render`
 ```json
-{ "skill": "baoyu-xhs-images", "inputs": { "prompts": ["..."] }, "aspect": "3:4", "output_dir": "/abs/under/OUTPUT_ROOT" }
+{ "skill": "baoyu-cover-image", "inputs": { "content": "..." }, "aspect": "3:4", "output_dir": "/abs/under/OUTPUT_ROOT" }
 ```
 →
 ```json
-{ "skill": "baoyu-xhs-images",
+{ "skill": "baoyu-cover-image",
   "files": [{ "path": "/abs/x.png", "width": 1024, "height": 1365 }],
-  "meta": { "provider": "task-relay", "model": "gpt-image-2" } }
+  "meta": { "runtime": "opencode", "model": "opencode-go/deepseek-v4.1-flash", "durationMs": 180000 } }
 ```
 
-| skill | inputs | 产出 | 状态 |
+| skill | inputs | 产出 | 执行方式 |
 |---|---|---|---|
-| `baoyu-image-gen` | `prompt`(string) / `prompts`(string[]) | PNG | ✅ |
-| `baoyu-diagram` | `svg`(string) | SVG | ✅（R8：M3 先出 svg） |
-| `mondo` | `prompt`(string) 或 `subject`+`kind`+`style` | PNG | ✅（复用 vendored prompt 组装） |
-| `baoyu-xhs-images` / `baoyu-cover-image` / `baoyu-infographic` / `baoyu-slide-deck` | `prompt`/`prompts`（**已组装**） | PNG | ⚠️ MVP：见下 |
+| `baoyu-xhs-images` / `baoyu-cover-image` / `baoyu-infographic` / `baoyu-slide-deck` | `content`(string) | PNG | **agent 技能运行时**(默认 opencode)无头加载该 skill 全流程(ADR-0006) |
+| `baoyu-image-gen` | `prompt`(string) / `prompts`(string[]) | PNG | 直接走图像 provider |
+| `baoyu-diagram` | `svg`(string) | SVG | 落盘(R8:M3 先出 svg) |
+| `mondo` | `prompt` 或 `subject`+`kind`+`style` | PNG | vendored 脚本组装 prompt 后渲染 |
 
-> ⚠️ **组装式 skill 的边界**：`xhs-images / cover-image / infographic / slide-deck` 上游本质是
-> **agent 工作流**（内容分析 + 按 `vendor/.../references/` 模板组装 prompt 需要 LLM），并非确定性脚本。
-> 当前 MVP 只接受**已组装好的 prompt**；prompt 组装归属（L2 组 vs skill-runner 内置 LLM）待 owner 裁决。
+> **组装式 skill(方案 A,ADR-0006)**:`baoyu-image-gen` 的组装式技能是上游 **agent 工作流**(分析内容→按
+> `references/` 模板组装 prompt→调出图后端)。skill-runner 通过**可替换的 agent 运行时适配器**驱动一个
+> 运行时(默认 opencode)无头执行其 SKILL.md;运行时内的出图后端经 **Shim → relay**。
+> **非确定 / 长耗时**:单次 render 可能数分钟,`AGENT_TIMEOUT_MS`(默认 600s)可调;接受用 **skill 版本 pin + E2E smoke** 断言。
 
 ### `POST /shim/v1/images/generations`（OpenAI 兼容同步 shim）
 把同步 `/images/generations` 语义 translate 到中转站的**异步任务式**链路，返回 `{ data:[{ b64_json }] }`。
@@ -49,7 +50,8 @@ GET  {IMAGE_BASE_URL}/images/tasks/{id}/content → { data:[{ url }] }  → 下�
 ## 配置（只走 env）
 
 见 [`.env.example`](./.env.example)。真实 `.env` 由 ops-agent 部署时注入，不入库。
-关键项：`IMAGE_BASE_URL` / `IMAGE_API_KEY` / `IMAGE_MODEL` / `OUTPUT_ROOT` / `MAX_IMAGES_PER_RENDER` / `RENDER_CONCURRENCY`。
+关键项：`IMAGE_BASE_URL` / `IMAGE_API_KEY` / `IMAGE_MODEL` / `OUTPUT_ROOT` / `MAX_IMAGES_PER_RENDER` / `RENDER_CONCURRENCY`；
+agent 运行时：`AGENT_RUNTIME` / `AGENT_BIN` / `AGENT_MODEL` / `AGENT_TIMEOUT_MS` / `AGENT_SKILLS_DIR`。
 
 ## 开发与测试
 
@@ -63,7 +65,7 @@ pnpm build && node dist/bin/start.js
 ## 部署
 
 systemd unit 模板见 [`deploy/skill-runner.service`](./deploy/skill-runner.service)（由 ops-agent 落地）。
-依赖：Node ≥ 22（服务本身）；`bun`（baoyu 脚本）；`python3`（mondo prompt 组装）。
+依赖：Node ≥ 22（服务本身）；`bun`（baoyu 脚本）；`python3`（mondo prompt 组装）；`opencode`（agent 技能运行时，需 LLM provider 凭据）。
 
 主机运行时安装方式、版本、路径见 [`deploy/HOST-PREREQS.md`](./deploy/HOST-PREREQS.md)
 （本机已装 `bun 1.4.3`；libreoffice 经评估**非必需**）。
