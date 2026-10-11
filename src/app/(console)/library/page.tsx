@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Download, ShieldCheck, Image as ImageIcon, Library } from 'lucide-react';
-import { Badge, Button, Card, CardHeader, Checkbox, Chip, EmptyState, Alert, Pagehead } from '@/components/console/ui';
+import { Badge, Button, Card, CardHeader, Checkbox, Chip, EmptyState, Alert, Pagehead, SkeletonTable } from '@/components/console/ui';
 import { withBasePath } from '@/lib/base-path';
 import { DRAFT_STATUS_LABELS, type DraftStatus } from '@/lib/review/status';
 import type { DraftImage, DraftRecord, DraftScores } from '@/lib/types';
@@ -116,7 +116,7 @@ export default function LibraryPage() {
     URL.revokeObjectURL(url);
   };
 
-  if (loading) return <EmptyState title="加载中…" />;
+  if (loading) return <SkeletonTable rows={6} cols={7} />;
 
   const checkedCount = filtered.filter((d) => checked.has(d.id)).length;
 

@@ -11,7 +11,7 @@ import {
   AlertTriangle,
   Palette,
 } from 'lucide-react';
-import { Alert, Badge, Button, Card, CardHeader, Chip, EmptyState, Pagehead } from '@/components/console/ui';
+import { Alert, Badge, Button, Card, CardHeader, Chip, EmptyState, Pagehead, SkeletonList, Skeleton } from '@/components/console/ui';
 import { withBasePath } from '@/lib/base-path';
 import { readSseText } from '@/lib/sse-client';
 import { RENDER_TYPES, type RenderType } from '@/lib/image/render-types';
@@ -229,7 +229,7 @@ export default function VisualPage() {
           <CardHeader title="待出图" subtitle={`${drafts.length} 篇 draft`} />
           <div className="max-h-[520px] overflow-y-auto p-2">
             {loadingDrafts ? (
-              <div className="px-2 py-6 text-center text-xs text-ink-3">加载中…</div>
+              <SkeletonList rows={5} />
             ) : drafts.length === 0 ? (
               <div className="px-2 py-6 text-center text-xs text-ink-3">暂无稿件,先去生成工作台。</div>
             ) : (
@@ -355,7 +355,12 @@ export default function VisualPage() {
             )}
 
             {!selected && rendering && (
-              <EmptyState title={`${type.label}出图中…`} hint="agent 技能运行时执行,请勿刷新。" />
+              <div role="status" aria-label={`${type.label}出图中`} className="flex flex-col items-center gap-3">
+                <Skeleton className="aspect-[3/4] w-full max-w-[240px] rounded-md" />
+                <div className="text-xs text-ink-3">
+                  {type.label}出图中…(agent 技能运行时执行,请勿刷新)
+                </div>
+              </div>
             )}
           </div>
         </Card>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { MessageSquare, Share2, Hash, Info } from 'lucide-react';
-import { Badge, Button, Card, CardHeader, EmptyState, Alert, Pagehead } from '@/components/console/ui';
+import { Badge, Button, Card, CardHeader, EmptyState, Alert, Pagehead, SkeletonTable } from '@/components/console/ui';
 import { withBasePath } from '@/lib/base-path';
 import type { PublicationRecord } from '@/lib/types';
 
@@ -90,9 +90,7 @@ export default function PublishPage() {
       <Card>
         <CardHeader title="发布记录" subtitle="L4 分发(待接入 worker / 人工放行)" />
         {loading ? (
-          <div className="p-4">
-            <EmptyState title="加载中…" />
-          </div>
+          <SkeletonTable rows={4} cols={5} />
         ) : publications.length === 0 ? (
           <div className="p-4">
             <EmptyState title="暂无发布记录" hint="L4 发布能力在 M4 接入。" />

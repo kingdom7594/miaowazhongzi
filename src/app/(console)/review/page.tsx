@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Check, Loader2, RotateCw, ShieldCheck, X } from 'lucide-react';
-import { Alert, Badge, Button, Card, CardHeader, Chip, EmptyState, Pagehead } from '@/components/console/ui';
+import { Alert, Badge, Button, Card, CardHeader, Chip, EmptyState, Pagehead, SkeletonList } from '@/components/console/ui';
 import { HighlightedBody, highlightTerms } from '@/components/console/highlight';
+import { ConfirmDialog } from '@/components/console/confirm-dialog';
 import { useToast } from '@/components/console/toast';
 import { withBasePath } from '@/lib/base-path';
 import { RUBRIC_LABELS, RUBRIC_DIMS } from '@/lib/eval/rubric';
@@ -247,7 +248,7 @@ export default function ReviewPage() {
         </div>
         <div className="max-h-[60vh] overflow-y-auto">
           {loading ? (
-            <div className="p-4 text-sm text-ink-3">加载中…</div>
+            <SkeletonList rows={6} />
           ) : filtered.length === 0 ? (
             <div className="p-4">
               <EmptyState title="队列为空" hint="在生成工作台产出 draft 后进入审核。" />
@@ -298,28 +299,14 @@ export default function ReviewPage() {
           )}
         </div>
         <div className="border-t border-line p-3">
-          {confirmBatch ? (
-            <div className="flex flex-col gap-2">
-              <span className="text-xs text-ink-2">确认放行已选 {checkedEligible.length} 篇?</span>
-              <div className="flex gap-2">
-                <Button variant="ok" onClick={batchRelease} disabled={busy !== null}>
-                  确认放行
-                </Button>
-                <Button variant="ghost" onClick={() => setConfirmBatch(false)}>
-                  取消
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <Button
-              variant="ghost"
-              className="w-full"
-              disabled={checkedEligible.length === 0 || busy !== null}
-              onClick={() => setConfirmBatch(true)}
-            >
-              <Check size={15} /> 批量放行{checkedEligible.length > 0 ? ` ${checkedEligible.length} 篇` : ''}
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            className="w-full"
+            disabled={checkedEligible.length === 0 || busy !== null}
+            onClick={() => setConfirmBatch(true)}
+          >
+            <Check size={15} /> 批量放行{checkedEligible.length > 0 ? ` ${checkedEligible.length} 篇` : ''}
+          </Button>
         </div>
       </Card>
 
@@ -522,24 +509,13 @@ export default function ReviewPage() {
             >
               提交审核
             </Button>
-            {confirmReject ? (
-              <div className="flex items-center gap-2">
-                <Button variant="danger" disabled={busy !== null} onClick={() => act('rejected')}>
-                  确认打回
-                </Button>
-                <Button variant="ghost" onClick={() => setConfirmReject(false)}>
-                  取消
-                </Button>
-              </div>
-            ) : (
-              <Button
-                variant="danger"
-                disabled={!selected || busy !== null || !canTransitionDraftStatus(selected.status, 'rejected')}
-                onClick={() => setConfirmReject(true)}
-              >
-                <X size={15} /> 打回
-              </Button>
-            )}
+            <Button
+              variant="danger"
+              disabled={!selected || busy !== null || !canTransitionDraftStatus(selected.status, 'rejected')}
+              onClick={() => setConfirmReject(true)}
+            >
+              <X size={15} /> 打回
+            </Button>
           </div>
         </Card>
       </div>
@@ -551,36 +527,44 @@ export default function ReviewPage() {
             #{selected.id} · {DRAFT_STATUS_LABELS[selected.status]}
           </span>
           <div className="flex shrink-0 items-center gap-2">
-            {confirmReject ? (
-              <>
-                <Button variant="danger" disabled={busy !== null} onClick={() => act('rejected')}>
-                  确认打回
-                </Button>
-                <Button variant="ghost" onClick={() => setConfirmReject(false)}>
-                  取消
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  variant="ghost"
-                  disabled={busy !== null || !canTransitionDraftStatus(selected.status, 'rejected')}
-                  onClick={() => setConfirmReject(true)}
-                >
-                  <X size={15} /> 打回
-                </Button>
-                <Button
-                  variant="ok"
-                  disabled={busy !== null || !canTransitionDraftStatus(selected.status, 'approved')}
-                  onClick={() => act('approved')}
-                >
-                  <Check size={15} /> 通过
-                </Button>
-              </>
-            )}
+            <Button
+              variant="ghost"
+              disabled={busy !== null || !canTransitionDraftStatus(selected.status, 'rejected')}
+              onClick={() => setConfirmReject(true)}
+            >
+              <X size={15} /> 打回
+            </Button>
+            <Button
+              variant="ok"
+              disabled={busy !== null || !canTransitionDraftStatus(selected.status, 'approved')}
+              onClick={() => act('approved')}
+            >
+              <Check size={15} /> 通过
+            </Button>
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmBatch}
+        title="批量放行"
+        description={`确认放行已选且符合条件的 ${checkedEligible.length} 篇稿件?此操作会将它们置为「已通过」。`}
+        confirmLabel="确认放行"
+        tone="ok"
+        busy={busy === 'act'}
+        onConfirm={batchRelease}
+        onCancel={() => setConfirmBatch(false)}
+      />
+      <ConfirmDialog
+        open={confirmReject}
+        title="打回稿件"
+        description={selected ? `确认打回稿件 #${selected.id}?状态将置为「已打回」。` : undefined}
+        confirmLabel="确认打回"
+        tone="danger"
+        busy={busy === 'act'}
+        onConfirm={() => act('rejected')}
+        onCancel={() => setConfirmReject(false)}
+      />
     </div>
   );
 }

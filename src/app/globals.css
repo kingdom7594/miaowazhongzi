@@ -145,3 +145,18 @@
 
 /* B4:数字/分值统一等宽对齐(设计系统 §2)。未分层,优先于工具类。 */
 .font-mono { font-variant-numeric: tabular-nums; }
+
+/*
+ * B5 无障碍(设计系统 §6 动效):尊重系统「减少动态效果」偏好,
+ * 关闭骨架 shimmer / spinner 等动画与过渡。
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

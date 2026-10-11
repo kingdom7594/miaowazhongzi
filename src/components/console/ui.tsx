@@ -27,7 +27,7 @@ export function CardHeader({
   return (
     <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
       <div>
-        <div className="text-sm font-bold">{title}</div>
+        <h2 className="text-sm font-bold">{title}</h2>
         {subtitle && <div className="mt-0.5 text-xs text-ink-2">{subtitle}</div>}
       </div>
       {action}
@@ -106,6 +106,7 @@ export function Button({
   onClick,
   children,
   type = 'button',
+  autoFocus,
 }: {
   variant?: keyof typeof BUTTON_VARIANTS;
   className?: string;
@@ -113,12 +114,14 @@ export function Button({
   onClick?: () => void;
   children: React.ReactNode;
   type?: 'button' | 'submit';
+  autoFocus?: boolean;
 }) {
   return (
     <button
       type={type}
       disabled={disabled}
       onClick={onClick}
+      autoFocus={autoFocus}
       className={cn(
         'inline-flex h-9 items-center justify-center gap-1.5 rounded-sm px-3.5 text-sm font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-50',
         BUTTON_VARIANTS[variant],
@@ -169,7 +172,7 @@ export function Pagehead({
           </span>
         )}
         <div className="min-w-0">
-          <h2 className="text-[22px] font-extrabold leading-tight tracking-tight">{title}</h2>
+          <h1 className="text-[22px] font-extrabold leading-tight tracking-tight">{title}</h1>
           {desc && <div className="mt-1 text-xs text-ink-2">{desc}</div>}
         </div>
       </div>
@@ -206,5 +209,66 @@ export function Checkbox({
       />
       {label}
     </label>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * B5 加载骨架(shimmer):替换纯文字「加载中…」,降低感知等待。
+ * ------------------------------------------------------------------ */
+
+export function Skeleton({ className }: { className?: string }) {
+  return <div aria-hidden className={cn('animate-pulse rounded-sm bg-panel-3', className)} />;
+}
+
+/** 列表 / 队列骨架。 */
+export function SkeletonList({ rows = 5 }: { rows?: number }) {
+  return (
+    <div role="status" aria-label="加载中" className="flex flex-col gap-2 p-3">
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3">
+          <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <Skeleton className="h-3 w-2/3" />
+            <Skeleton className="h-2.5 w-1/3" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** 表格骨架。 */
+export function SkeletonTable({ rows = 5, cols = 6 }: { rows?: number; cols?: number }) {
+  return (
+    <div role="status" aria-label="加载中" className="flex flex-col gap-2 p-4">
+      {Array.from({ length: rows }).map((_, r) => (
+        <div key={r} className="flex items-center gap-3">
+          {Array.from({ length: cols }).map((__, c) => (
+            <Skeleton key={c} className={cn('h-6 flex-1', c === 0 && 'max-w-[38%]')} />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** 卡片网格骨架(选题看板等)。 */
+export function SkeletonCards({ count = 4 }: { count?: number }) {
+  return (
+    <div role="status" aria-label="加载中" className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="rounded-lg border border-line bg-panel p-4">
+          <Skeleton className="h-4 w-3/5" />
+          <div className="mt-3 flex flex-col gap-2">
+            <Skeleton className="h-3 w-full" />
+            <Skeleton className="h-3 w-4/5" />
+          </div>
+          <div className="mt-4 flex gap-2">
+            <Skeleton className="h-5 w-16" />
+            <Skeleton className="h-5 w-20" />
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
