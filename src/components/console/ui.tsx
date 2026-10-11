@@ -2,13 +2,15 @@ import { cn } from '@/lib/utils';
 
 export function Card({
   className,
+  id,
   children,
 }: {
   className?: string;
+  id?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn('rounded-lg border border-line bg-panel', className)}>{children}</div>
+    <div id={id} className={cn('rounded-lg border border-line bg-panel', className)}>{children}</div>
   );
 }
 
