@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { RefreshCw, ArrowRight, Database, X } from 'lucide-react';
+import { RefreshCw, ArrowRight, Database, X, Radar, Check } from 'lucide-react';
 import { Badge, Button, Card, Checkbox, EmptyState, Alert, Pagehead } from '@/components/console/ui';
 import { withBasePath } from '@/lib/base-path';
 import type { ContentTopic } from '@/lib/radar/types';
@@ -22,6 +22,8 @@ export default function TopicPage() {
   const [ingesting, setIngesting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** B4:批量入队二次确认,避免误触将整批选题推入生产。 */
+  const [confirmEnqueue, setConfirmEnqueue] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -48,10 +50,15 @@ export default function TopicPage() {
     [topics, selected],
   );
 
-  const toggle = (id: string, next: boolean) =>
+  const toggle = (id: string, next: boolean) => {
+    setConfirmEnqueue(false);
     setSelected((prev) => (next ? [...new Set([...prev, id])] : prev.filter((x) => x !== id)));
+  };
 
-  const toggleAll = (next: boolean) => setSelected(next ? topics.map((t) => t.id) : []);
+  const toggleAll = (next: boolean) => {
+    setConfirmEnqueue(false);
+    setSelected(next ? topics.map((t) => t.id) : []);
+  };
 
   const ingest = async () => {
     setIngesting(true);
@@ -83,6 +90,7 @@ export default function TopicPage() {
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-4 pb-24">
       <Pagehead
+        icon={Radar}
         title="选题看板"
         desc="雷达选题(GET /api/content)→ 入库 SQLite → 多选进入生产。"
         actions={
@@ -170,16 +178,33 @@ export default function TopicPage() {
               </span>
               <button
                 type="button"
-                onClick={() => setSelected([])}
+                onClick={() => {
+                  setSelected([]);
+                  setConfirmEnqueue(false);
+                }}
                 className="inline-flex items-center gap-1 text-xs text-ink-3 hover:text-ink"
               >
                 <X size={13} /> 清空
               </button>
             </div>
-            <Button variant="gen" onClick={enqueue}>
-              加入生产队列
-              <ArrowRight size={15} />
-            </Button>
+            {confirmEnqueue ? (
+              <div className="flex items-center gap-2">
+                <span className="hidden text-xs text-ink-2 sm:inline">
+                  确认将 {selected.length} 个选题加入生产队列?
+                </span>
+                <Button variant="ghost" onClick={() => setConfirmEnqueue(false)}>
+                  取消
+                </Button>
+                <Button variant="gen" onClick={enqueue}>
+                  <Check size={15} /> 确认加入
+                </Button>
+              </div>
+            ) : (
+              <Button variant="gen" onClick={() => setConfirmEnqueue(true)}>
+                加入生产队列
+                <ArrowRight size={15} />
+              </Button>
+            )}
           </div>
         </div>
       )}

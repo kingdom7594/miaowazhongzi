@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Download, ShieldCheck, Image as ImageIcon } from 'lucide-react';
+import { Download, ShieldCheck, Image as ImageIcon, Library } from 'lucide-react';
 import { Badge, Button, Card, CardHeader, Checkbox, Chip, EmptyState, Alert, Pagehead } from '@/components/console/ui';
 import { withBasePath } from '@/lib/base-path';
 import { DRAFT_STATUS_LABELS, type DraftStatus } from '@/lib/review/status';
@@ -36,7 +36,7 @@ function scoreTotal(scores?: DraftScores): number | null {
 const SORTS = [
   { id: 'updated', label: '最近更新' },
   { id: 'created', label: '创建时间' },
-  { id: 'quality', label: '质量分' },
+  { id: 'quality', label: '质量(1–5)' },
 ] as const;
 
 type SortId = (typeof SORTS)[number]['id'];
@@ -99,7 +99,7 @@ export default function LibraryPage() {
   const exportCsv = () => {
     const rows = filtered.filter((d) => checked.has(d.id));
     if (rows.length === 0) return;
-    const header = ['id', 'platform', 'title', 'status', 'quality', 'topicId', 'updatedAt'];
+    const header = ['id', 'platform', 'title', 'status', 'quality(1-5)', 'topicId', 'updatedAt'];
     const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const body = rows.map((d) =>
       [d.id, d.platform, d.titles?.[0] ?? '', d.status, scoreTotal(d.scores)?.toFixed(2) ?? '', d.topicId, d.updatedAt]
@@ -123,6 +123,7 @@ export default function LibraryPage() {
   return (
     <div className="flex flex-col gap-4">
       <Pagehead
+        icon={Library}
         title="稿件库"
         desc={`选题 ↔ 稿件 ↔ 图片 ↔ 发布记录 · 共 ${drafts.length} 篇`}
         actions={
@@ -191,7 +192,7 @@ export default function LibraryPage() {
                   <th className="px-3 py-2 font-medium">平台</th>
                   <th className="px-3 py-2 font-medium">产物</th>
                   <th className="px-3 py-2 font-medium">阶段</th>
-                  <th className="px-3 py-2 font-medium">质量</th>
+                  <th className="px-3 py-2 font-medium">质量(1–5)</th>
                   <th className="px-3 py-2 font-medium">更新</th>
                   <th className="px-3 py-2 font-medium">操作</th>
                 </tr>
@@ -244,7 +245,7 @@ export default function LibraryPage() {
                         <Badge tone={STATUS_TONE[d.status]}>{DRAFT_STATUS_LABELS[d.status]}</Badge>
                       </td>
                       <td className="px-3 py-2.5 align-top font-mono text-xs text-ink-2">
-                        {q === null ? '—' : q.toFixed(2)}
+                        {q === null ? '—' : q.toFixed(1)}
                       </td>
                       <td className="px-3 py-2.5 align-top font-mono text-[11px] text-ink-3">
                         {new Date(d.updatedAt).toLocaleString('zh-CN')}

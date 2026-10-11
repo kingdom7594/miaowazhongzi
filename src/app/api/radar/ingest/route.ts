@@ -1,12 +1,20 @@
 import { NextRequest } from 'next/server';
-import { ingestBrief, ingestLatest } from '@/lib/radar/ingest';
+import { ingestBrief, ingestLatest, parseIngestBody } from '@/lib/radar/ingest';
 
 export const runtime = 'nodejs';
 
+/**
+ * F-09:入参校验先行 —— 非法请求体/日期返回 400;仅当上游(雷达)拉取失败才 502。
+ */
 export async function POST(request: NextRequest) {
+  const raw = await request.text().catch(() => '');
+  const parsed = parseIngestBody(raw);
+  if (!parsed.ok) {
+    return Response.json({ ok: false, error: parsed.message }, { status: 400 });
+  }
+
   try {
-    const body = (await request.json().catch(() => ({}))) as { date?: string };
-    const outcome = body?.date ? await ingestBrief(body.date) : await ingestLatest();
+    const outcome = parsed.date ? await ingestBrief(parsed.date) : await ingestLatest();
     return Response.json({ ok: true, ...outcome });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Radar ingest failed';

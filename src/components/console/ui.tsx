@@ -1,3 +1,4 @@
+import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function Card({
@@ -144,21 +145,33 @@ export function Alert({ tone, children }: { tone: BadgeTone; children: React.Rea
   );
 }
 
-/** 页面头(G4):大标题 + 说明 + 右侧动作区。 */
+/**
+ * 页面头(G4,设计稿 B4-2 定稿):左侧 Lucide 图标 + Display 22/800 标题 + 说明 + 右侧动作区。
+ * 图标容器与 shell 品牌标一致的圆角方形,保证 7 个控制台页面观感统一。
+ */
 export function Pagehead({
+  icon: Icon,
   title,
   desc,
   actions,
 }: {
+  icon?: LucideIcon;
   title: React.ReactNode;
   desc?: React.ReactNode;
   actions?: React.ReactNode;
 }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-3">
-      <div className="min-w-0">
-        <h2 className="text-lg font-bold leading-tight">{title}</h2>
-        {desc && <div className="mt-1 text-xs text-ink-2">{desc}</div>}
+      <div className="flex min-w-0 items-center gap-3">
+        {Icon && (
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-brand/15 text-brand">
+            <Icon size={20} strokeWidth={1.9} />
+          </span>
+        )}
+        <div className="min-w-0">
+          <h2 className="text-[22px] font-extrabold leading-tight tracking-tight">{title}</h2>
+          {desc && <div className="mt-1 text-xs text-ink-2">{desc}</div>}
+        </div>
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>

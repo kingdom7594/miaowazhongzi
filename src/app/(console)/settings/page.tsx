@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Settings2 } from 'lucide-react';
 import { Badge, Card, CardHeader, EmptyState, Alert, Pagehead } from '@/components/console/ui';
 import { withBasePath } from '@/lib/base-path';
 import { countDraftsToday, dailyQuotaTarget } from '@/lib/console/shell-data';
@@ -75,7 +76,7 @@ export default function SettingsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Pagehead title="知识库 / 设置" desc="产品档案 · 人设 · 合规词库 · 平台 / 模型配置与依赖健康。" />
+      <Pagehead icon={Settings2} title="知识库 / 设置" desc="产品档案 · 人设 · 合规词库 · 平台 / 模型配置与依赖健康。" />
 
       {error && <Alert tone="bad">{error}</Alert>}
 

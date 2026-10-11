@@ -122,7 +122,11 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  --font-mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, monospace;
+  /* B4/设计系统 §2:UI = Inter + Noto Sans SC(中文回退 PingFang SC → WenQuanYi Micro Hei)。 */
+  --font-sans: var(--font-inter), "Noto Sans SC", "PingFang SC", "WenQuanYi Micro Hei", system-ui,
+    -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* 数字 / 代码 / 分值:JetBrains Mono(tabular-nums 由下方未分层规则补足)。 */
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 @layer base {
@@ -138,3 +142,6 @@
   outline: 2px solid var(--brand);
   outline-offset: 2px;
 }
+
+/* B4:数字/分值统一等宽对齐(设计系统 §2)。未分层,优先于工具类。 */
+.font-mono { font-variant-numeric: tabular-nums; }

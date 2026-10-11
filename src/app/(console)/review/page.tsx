@@ -225,8 +225,9 @@ export default function ReviewPage() {
   );
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 pb-20 xl:pb-0">
       <Pagehead
+        icon={ShieldCheck}
         title="审核"
         desc="合规闸门(规则 + LLM judge)+ 质量评分;通过 / 打回写回 drafts.status,全流程人工放行。"
       />
@@ -543,6 +544,43 @@ export default function ReviewPage() {
         </Card>
       </div>
       </div>
+      {/* R2:移动端(单列 <xl)主操作吸底,避免审核时来回滚动找按钮。 */}
+      {selected && (
+        <div className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-3 border-t border-line bg-panel/95 px-4 py-3 backdrop-blur xl:hidden">
+          <span className="min-w-0 truncate text-xs text-ink-2">
+            #{selected.id} · {DRAFT_STATUS_LABELS[selected.status]}
+          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            {confirmReject ? (
+              <>
+                <Button variant="danger" disabled={busy !== null} onClick={() => act('rejected')}>
+                  确认打回
+                </Button>
+                <Button variant="ghost" onClick={() => setConfirmReject(false)}>
+                  取消
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="ghost"
+                  disabled={busy !== null || !canTransitionDraftStatus(selected.status, 'rejected')}
+                  onClick={() => setConfirmReject(true)}
+                >
+                  <X size={15} /> 打回
+                </Button>
+                <Button
+                  variant="ok"
+                  disabled={busy !== null || !canTransitionDraftStatus(selected.status, 'approved')}
+                  onClick={() => act('approved')}
+                >
+                  <Check size={15} /> 通过
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

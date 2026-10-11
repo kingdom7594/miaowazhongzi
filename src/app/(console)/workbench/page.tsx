@@ -148,6 +148,7 @@ export default function WorkbenchPage() {
   return (
     <div className="flex flex-col gap-4">
       <Pagehead
+        icon={Wand2}
         title="生成工作台"
         desc="选题 → 多平台 draft(逐平台隔离,失败不整批丢)。"
       />
