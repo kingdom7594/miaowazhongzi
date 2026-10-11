@@ -40,7 +40,7 @@ radar(L1) --contentBrief--> miaowazhongzi(L2) --draft--> skill-runner(L3) --imag
 
 ### L2 miaowazhongzi 中枢(Next.js 16)
 - `src/lib/ai`:provider-agnostic LLM(默认 DeepSeek,去 coze)。
-- `src/lib/radar`:拉 `/api/content`,选题入库/去重/追溯。
+- `src/lib/radar`:拉 `/api/content`,选题入库/去重/追溯。ingest 入参在 API 层校验(非法 → 400,上游失败 → 502)。
 - `src/lib/knowledge`:产品档案/人设/合规词库注入。
 - `src/lib/compliance`:规则 + 独立 judge。
 - `src/lib/image`:调 skill-runner 出图。`client.ts` 为 HTTP 契约;`render-draft.ts` 组装 draft→`inputs.content`、
@@ -81,6 +81,18 @@ radar(L1) --contentBrief--> miaowazhongzi(L2) --draft--> skill-runner(L3) --imag
 - **发布(B3 / P1)**:`/publish` 为 3 张平台占位卡(公众号 / 微博 / X,MVP 占位徽标)+ 发布记录表(读 `publications`)。
 - **设置(B3 / S1·S2·S3)**:`/settings` 两栏 —— 左设置导航(产品档案 / 人设 / 合规词库 / 平台配置 / 模型与额度 /
   健康检查),右分区(合规词库为「禁用 → 替换」表格;平台配置;模型与额度含视觉适配器状态与额度进度条)。
+- **打磨收口(B4)**:字号 / 图标 / 响应式 / 入参校验 / 死代码统一。
+  - **字体与字阶**:`Inter`(拉丁,`next/font`)+ `Noto Sans SC`(中文,`<link>` 按 unicode-range 分片,离线回退
+    PingFang SC / WenQuanYi Micro Hei)+ `JetBrains Mono`(`next/font`,数字/分值 `tabular-nums`);页标题 Display 22/800。
+  - **`Pagehead` 定稿**:左侧 Lucide 图标 + 22/800 标题,7 个控制台页面统一;字符图标(如 Stepper 的 `→`)改 Lucide。
+  - **响应式(F-07)**:`ConsoleShell` 侧栏在 `<lg` 收起为抽屉(顶栏汉堡 + 遮罩,切换路由自动关闭);表格横向滚动、
+    卡片单列;审核页主操作(通过 / 打回)在单列(<xl)吸底。
+  - **ingest 入参校验(F-09)**:`POST /api/radar/ingest` 先校验请求体 —— 非法 JSON / 非对象 / 非法 `date`
+    (须 `YYYY-MM-DD` 且真实日历日期)返回 **400**;仅上游(雷达)拉取失败才 **502**(`src/lib/radar/ingest.ts`
+    `isValidBriefDate` / `parseIngestBody`)。
+  - **质量分量纲**:统一 **1–5** 制并显式标注(审核评分环 `/ 5` + 稿件库列头「质量(1–5)」),避免与高保真 0–100 混淆。
+  - **死代码清理(F-11)**:全量核对 `src/app/api/*` 均被调用(无死路由);删除未引用的 `components/ui/{button,card}.tsx`、
+    `components/console/stage-placeholder.tsx` 与 `PlatformSpec` 未使用的 `emoji` 字段。
 - `src/lib/publish`:分发适配器。
 - SQLite:选题库 / 稿件库 / 发布记录。
 
