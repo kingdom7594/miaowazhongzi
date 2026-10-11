@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Sparkles, Loader2, Wand2, X, Check } from 'lucide-react';
+import Link from 'next/link';
+import { Sparkles, Loader2, Wand2, X, Check, ShieldCheck, Image as ImageIcon, Library } from 'lucide-react';
 import {
   Badge,
   Button,
@@ -13,6 +14,7 @@ import {
   Alert,
   Pagehead,
 } from '@/components/console/ui';
+import { HighlightedBody, highlightTerms } from '@/components/console/highlight';
 import { withBasePath } from '@/lib/base-path';
 import { readSseJson } from '@/lib/sse-client';
 import type { ContentTopic } from '@/lib/radar/types';
@@ -45,6 +47,9 @@ export default function WorkbenchPage() {
   const [batchIds, setBatchIds] = useState<string[]>([]);
   const [platforms, setPlatforms] = useState<string[]>(['xiaohongshu']);
   const [aiDensity, setAiDensity] = useState(50);
+  const [wordCount, setWordCount] = useState<number | ''>('');
+  const [autoEval, setAutoEval] = useState(true);
+  const [modelDetail, setModelDetail] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [drafts, setDrafts] = useState<GenDraft[]>([]);
@@ -53,15 +58,22 @@ export default function WorkbenchPage() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(withBasePath('/api/topics'));
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? '加载选题失败');
+      const [tr, hr] = await Promise.all([
+        fetch(withBasePath('/api/topics')),
+        fetch(withBasePath('/api/health')),
+      ]);
+      const data = await tr.json();
+      if (!tr.ok) throw new Error(data.error ?? '加载选题失败');
       const list = (data.topics ?? []) as TopicRow[];
       setTopics(list);
       const params = new URLSearchParams(window.location.search);
       const fromQuery = params.getAll('topicId').filter((id) => list.some((t) => t.id === id));
       if (fromQuery.length > 0) setBatchIds([...new Set(fromQuery)]);
       else if (list.length > 0) setBatchIds([list[0].id]);
+      if (hr.ok) {
+        const hd = await hr.json();
+        setModelDetail((hd.checks?.llm?.detail as string) ?? null);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '加载选题失败');
     }
@@ -99,7 +111,13 @@ export default function WorkbenchPage() {
           const res = await fetch(withBasePath('/api/drafts/generate'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ topicId, platforms, aiDensity }),
+            body: JSON.stringify({
+              topicId,
+              platforms,
+              aiDensity,
+              wordCount: wordCount === '' ? undefined : wordCount,
+              skipEval: !autoEval,
+            }),
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error ?? '生成失败');
@@ -125,6 +143,7 @@ export default function WorkbenchPage() {
   };
 
   const totalCount = batchIds.length * platforms.length;
+  const pct = progress && progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
 
   return (
     <div className="flex flex-col gap-4">
@@ -135,7 +154,8 @@ export default function WorkbenchPage() {
 
       {error && <Alert tone="bad">{error}</Alert>}
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[340px_1fr]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[300px_minmax(0,1fr)_268px]">
+        {/* 左:参数 */}
         <Card className="h-fit">
           <CardHeader title="生成参数" subtitle="选题 → 多平台 draft" />
           <div className="flex flex-col gap-4 p-4">
@@ -163,7 +183,7 @@ export default function WorkbenchPage() {
                   ))}
                 </div>
               )}
-              <div className="mt-1 max-h-44 overflow-y-auto rounded-sm border border-line bg-panel-2 p-2">
+              <div className="mt-1 max-h-40 overflow-y-auto rounded-sm border border-line bg-panel-2 p-2">
                 {topics.length === 0 ? (
                   <div className="px-1 py-2 text-xs text-ink-3">(无选题,请先在选题看板拉取)</div>
                 ) : (
@@ -206,6 +226,29 @@ export default function WorkbenchPage() {
               />
             </label>
 
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-ink-2">正文字数</span>
+              <input
+                type="number"
+                min={100}
+                step={50}
+                value={wordCount}
+                placeholder="自动(按平台区间)"
+                onChange={(e) => setWordCount(e.target.value === '' ? '' : Number(e.target.value))}
+                className="h-9 rounded-sm border border-line bg-panel-2 px-2.5 text-sm outline-none focus:border-brand"
+              />
+            </label>
+
+            <Checkbox
+              checked={autoEval}
+              onChange={setAutoEval}
+              label={<span className="text-ink-2">自动质量评审(合规 + judge 闸门)</span>}
+            />
+
+            <div className="rounded-md border border-dashed border-line bg-panel-2 px-3 py-2 text-[11px] leading-relaxed text-ink-3">
+              内容形式 / 人设风格 / 标题备选数 / 禁用词表 等参数待后端生成管线支持,暂不计入本页控件(避免无效参数)。
+            </div>
+
             <Button
               variant="gen"
               onClick={generate}
@@ -214,11 +257,12 @@ export default function WorkbenchPage() {
               {generating ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
               {generating
                 ? `生成中 ${progress?.done ?? 0}/${progress?.total ?? 0}…`
-                : `生成 ${totalCount} 篇(${batchIds.length} 选题 × ${platforms.length} 平台)`}
+                : `批量生成 ${totalCount} 篇`}
             </Button>
           </div>
         </Card>
 
+        {/* 中:生成结果 */}
         <div className="flex flex-col gap-3">
           {generating && (
             <EmptyState
@@ -227,10 +271,15 @@ export default function WorkbenchPage() {
             />
           )}
           {!generating && drafts.length === 0 && errors.length === 0 && (
-            <EmptyState title="暂无产出" hint="勾选本批选题与平台,点击「生成」。" />
+            <EmptyState title="暂无产出" hint="勾选本批选题与平台,点击「批量生成」。" />
           )}
           {drafts.map((d) => (
-            <DraftPreview key={d.id} draft={d} topic={topics.find((t) => t.id === d.topicId)} onApplyTitles={applyTitles} />
+            <DraftPreview
+              key={d.id}
+              draft={d}
+              topic={topics.find((t) => t.id === d.topicId)}
+              onApplyTitles={applyTitles}
+            />
           ))}
           {errors.map((e) => (
             <Alert key={`${e.platform}-${e.error}`} tone="bad">
@@ -238,8 +287,79 @@ export default function WorkbenchPage() {
             </Alert>
           ))}
         </div>
+
+        {/* 右:批次进度 / 模型 / 快捷 */}
+        <div className="flex flex-col gap-3">
+          <Card>
+            <CardHeader title="批次进度" subtitle={`${batchIds.length} 选题 × ${platforms.length} 平台`} />
+            <div className="flex flex-col gap-2 p-4">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-ink-2">{generating ? '生成中' : progress ? '已完成' : '待生成'}</span>
+                <span className="font-mono text-ink-3">
+                  {progress ? `${progress.done}/${progress.total}` : `0/${batchIds.length}`}
+                </span>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-panel-3">
+                <div className="h-full rounded-full bg-gen transition-all" style={{ width: `${pct}%` }} />
+              </div>
+              <div className="mt-1 grid grid-cols-2 gap-2 font-mono text-[11px] text-ink-3">
+                <span>产出 {drafts.length} 篇</span>
+                <span>失败 {errors.length} 篇</span>
+              </div>
+            </div>
+          </Card>
+
+          <Card>
+            <CardHeader title="模型与消耗" subtitle="L2 生成 + L5 评审" />
+            <div className="flex flex-col gap-2 p-4 text-xs text-ink-2">
+              <div className="flex items-center justify-between gap-2">
+                <span>生成 / 评审模型</span>
+                <span className="truncate font-mono text-[11px] text-ink-3" title={modelDetail ?? ''}>
+                  {modelDetail ?? '未配置'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>质量闸门</span>
+                <Badge tone={autoEval ? 'ok' : 'gray'}>{autoEval ? '开' : '关'}</Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>本批产出</span>
+                <span className="font-mono text-ink-3">{drafts.length} 篇</span>
+              </div>
+            </div>
+          </Card>
+
+          <Card>
+            <CardHeader title="快捷操作" />
+            <div className="flex flex-col gap-1 p-2">
+              <QuickLink href="/review" icon={ShieldCheck} label="去审核" />
+              <QuickLink href="/visual" icon={ImageIcon} label="去视觉工位" />
+              <QuickLink href="/library" icon={Library} label="去稿件库" />
+            </div>
+          </Card>
+        </div>
       </div>
     </div>
+  );
+}
+
+function QuickLink({
+  href,
+  icon: Icon,
+  label,
+}: {
+  href: string;
+  icon: typeof ShieldCheck;
+  label: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="flex items-center gap-2 rounded-sm px-2.5 py-2 text-sm text-ink-2 transition-colors hover:bg-panel-3 hover:text-ink"
+    >
+      <Icon size={15} strokeWidth={1.9} />
+      {label}
+    </Link>
   );
 }
 
@@ -257,6 +377,8 @@ function DraftPreview({
   const [boosted, setBoosted] = useState<BoostTitle[] | null>(null);
   const [boostError, setBoostError] = useState<string | null>(null);
   const [applied, setApplied] = useState<string | null>(null);
+
+  const terms = highlightTerms(compliance?.risks);
 
   const runBoost = async () => {
     setBoosting(true);
@@ -323,9 +445,22 @@ function DraftPreview({
       {draft.titles && draft.titles.length > 0 && (
         <ul className="mb-2 flex flex-col gap-1">
           {draft.titles.map((t, i) => (
-            <li key={i} className={`text-sm font-semibold ${applied === t ? 'text-brand' : ''}`}>
-              {i + 1}. {t}
-              {applied === t && <Check size={13} className="ml-1 inline" />}
+            <li key={i} className="flex items-start gap-2 text-sm font-semibold">
+              <input
+                type="radio"
+                name={`title-${draft.id}`}
+                checked={i === 0}
+                onChange={() => applyTitle(t)}
+                aria-label={`选为标题 A:${t}`}
+                className="mt-1 accent-brand"
+              />
+              <span className={applied === t ? 'text-brand' : ''}>
+                <span className="mr-1 font-mono text-[11px] text-ink-3">
+                  {String.fromCharCode(65 + i)}
+                </span>
+                {t}
+                {applied === t && <Check size={13} className="ml-1 inline" />}
+              </span>
             </li>
           ))}
         </ul>
@@ -360,7 +495,7 @@ function DraftPreview({
         </div>
       )}
 
-      <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink-2">{draft.body}</p>
+      <HighlightedBody body={draft.body} terms={terms} />
 
       {draft.tags && draft.tags.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
@@ -372,13 +507,25 @@ function DraftPreview({
         </div>
       )}
 
-      {draft.scores && (
-        <div className="mt-3 flex gap-3 font-mono text-[11px] text-ink-3">
-          <span>钩子 {draft.scores.hook ?? '-'}</span>
-          <span>依据 {draft.scores.evidence ?? '-'}</span>
-          <span>平台契合 {draft.scores.platformFit ?? '-'}</span>
-        </div>
-      )}
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        {draft.scores ? (
+          <div className="flex gap-3 font-mono text-[11px] text-ink-3">
+            <span>钩子 {draft.scores.hook ?? '-'}</span>
+            <span>依据 {draft.scores.evidence ?? '-'}</span>
+            <span>平台契合 {draft.scores.platformFit ?? '-'}</span>
+          </div>
+        ) : (
+          <span className="font-mono text-[11px] text-ink-3">质量评分未开启</span>
+        )}
+        {compliance && (
+          <span className="flex items-center gap-1.5 text-[11px]">
+            <ShieldCheck size={13} strokeWidth={1.9} className={compliance.passed ? 'text-ok' : 'text-warn'} />
+            <span className={compliance.passed ? 'text-ok' : 'text-warn'}>
+              {compliance.passed ? '合规闸门通过' : `待复核 ${compliance.risks?.length ?? 0} 项`}
+            </span>
+          </span>
+        )}
+      </div>
     </Card>
   );
 }

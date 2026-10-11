@@ -70,6 +70,17 @@ radar(L1) --contentBrief--> miaowazhongzi(L2) --draft--> skill-runner(L3) --imag
   不整批 500,成功 draft 立即入库,失败平台记入 `errors[]`;评估失败时保留已生成正文(仅标注 error)。
 - **主题(B1)**:`html[data-theme="light|dark"]`(`layout.tsx` 内联脚本防 FOUC + 顶栏 `ThemeToggle` + `localStorage`),
   `globals.css` 深浅 token 经属性选择器生效。
+- **控制台外壳 / 页面结构(B3)**:`ConsoleShell` 侧栏 250 / 顶栏 60,品牌 + 分组导航(流水线 / 系统)、
+  今日产出额度卡、用户卡;顶栏含面包屑(状态点 + 标题 + 副标题)、流水线 Stepper(阶段图标 + 真实计数)、
+  搜索(⌘K 命令面板,检索页面 / 选题 / 稿件)、刷新、待办通知(待出图 / 待审核 / 待发布)与主题钮。
+  - 跨页统一 `Pagehead`(大标题 + 说明 + 右侧动作)。
+  - **Stepper 映射修正(F-06)**:阶段由路由推导(`src/lib/console/shell-data.ts` `activeStage`)——
+    `topic→1/生成→2/视觉→3/审核→4/发布→5`;**稿件库 / 设置为跨阶段视图 → 0,不再错误高亮「发布」**。
+- **稿件库表格化(B3 / L1·L2·L3)**:`/library` 由卡片列表改为表格(稿件 / 来源选题 · 平台 · 产物缩略图 · 阶段 ·
+  质量分 · 更新 · 操作),含平台 / 阶段筛选与排序段控件、行多选 + 导出 CSV;**发布记录移出稿件库**(归属 `/publish`)。
+- **发布(B3 / P1)**:`/publish` 为 3 张平台占位卡(公众号 / 微博 / X,MVP 占位徽标)+ 发布记录表(读 `publications`)。
+- **设置(B3 / S1·S2·S3)**:`/settings` 两栏 —— 左设置导航(产品档案 / 人设 / 合规词库 / 平台配置 / 模型与额度 /
+  健康检查),右分区(合规词库为「禁用 → 替换」表格;平台配置;模型与额度含视觉适配器状态与额度进度条)。
 - `src/lib/publish`:分发适配器。
 - SQLite:选题库 / 稿件库 / 发布记录。
 

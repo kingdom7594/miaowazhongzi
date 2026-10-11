@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Check, Loader2, RotateCw, ShieldCheck, X } from 'lucide-react';
-import { Alert, Badge, Button, Card, CardHeader, Chip, EmptyState } from '@/components/console/ui';
+import { Alert, Badge, Button, Card, CardHeader, Chip, EmptyState, Pagehead } from '@/components/console/ui';
+import { HighlightedBody, highlightTerms } from '@/components/console/highlight';
 import { useToast } from '@/components/console/toast';
 import { withBasePath } from '@/lib/base-path';
 import { RUBRIC_LABELS, RUBRIC_DIMS } from '@/lib/eval/rubric';
@@ -39,46 +40,6 @@ function scoreTotal(scores?: DraftScores): number | null {
   const values = SCORE_DIMS.map((d) => scores[d]).filter((v): v is number => typeof v === 'number');
   if (values.length === 0) return null;
   return values.reduce((a, b) => a + b, 0) / values.length;
-}
-
-/** 从 risks 文本里抽取正文命中词(「」包裹)用于高亮。 */
-function highlightTerms(risks?: string[]): string[] {
-  if (!risks) return [];
-  const terms = new Set<string>();
-  for (const risk of risks) {
-    const re = /「([^」]+)」/g;
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(risk)) !== null) {
-      if (m[1]) terms.add(m[1]);
-    }
-  }
-  return [...terms];
-}
-
-function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function HighlightedBody({ body, terms }: { body: string; terms: string[] }) {
-  const parts = useMemo(() => {
-    if (terms.length === 0) return [body];
-    const re = new RegExp(`(${terms.map(escapeRegExp).join('|')})`, 'g');
-    return body.split(re);
-  }, [body, terms]);
-  const termSet = useMemo(() => new Set(terms), [terms]);
-  return (
-    <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">
-      {parts.map((part, i) =>
-        termSet.has(part) ? (
-          <mark key={i} className="rounded-sm bg-warn/25 px-0.5 text-warn">
-            {part}
-          </mark>
-        ) : (
-          <span key={i}>{part}</span>
-        ),
-      )}
-    </p>
-  );
 }
 
 function ScoreRing({ value }: { value: number | null }) {
@@ -264,7 +225,12 @@ export default function ReviewPage() {
   );
 
   return (
-    <div className="grid grid-cols-1 gap-4 xl:grid-cols-[300px_minmax(0,1fr)_300px]">
+    <div className="flex flex-col gap-4">
+      <Pagehead
+        title="审核"
+        desc="合规闸门(规则 + LLM judge)+ 质量评分;通过 / 打回写回 drafts.status,全流程人工放行。"
+      />
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[300px_minmax(0,1fr)_300px]">
       {/* 左:审核队列 */}
       <Card className="flex h-fit flex-col">
         <CardHeader title="审核队列" subtitle={`共 ${drafts.length} 篇`} />
@@ -575,6 +541,7 @@ export default function ReviewPage() {
             )}
           </div>
         </Card>
+      </div>
       </div>
     </div>
   );
