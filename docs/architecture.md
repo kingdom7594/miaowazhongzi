@@ -44,16 +44,28 @@ radar(L1) --contentBrief--> miaowazhongzi(L2) --draft--> skill-runner(L3) --imag
 - `src/lib/knowledge`:产品档案/人设/合规词库注入。
 - `src/lib/compliance`:规则 + 独立 judge。
 - `src/lib/image`:调 skill-runner 出图。`client.ts` 为 HTTP 契约;`render-draft.ts` 组装 draft→`inputs.content`、
-  调 `/render`(封面 `baoyu-cover-image` / 卡片 `baoyu-xhs-images`)、回写 `drafts.images`(同技能替换)并把
-  skill-runner 绝对路径映射为 app 预览 url(限制在 `RENDER_OUTPUT_ROOT` 内)。
+  调 `/render`、回写 `drafts.images`(同技能替换)并把 skill-runner 绝对路径映射为 app 预览 url
+  (限制在 `RENDER_OUTPUT_ROOT` 内)。
+  - **出图类型放宽(B2)**:`DRAFT_RENDER_SKILLS` 从 2 类扩到 5 类 —— 卡片 `baoyu-xhs-images`、封面
+    `baoyu-cover-image`、信息图 `baoyu-infographic`、PPT `baoyu-slide-deck`、图解 `baoyu-diagram`
+    (对齐 skill-runner `SKILL_NAMES`);`render-types.ts` 维护「出图类型 ↔ 技能」映射。
+  - 图解为 **svg 透传**:`render-draft.ts` 对 `baoyu-diagram` 先经 `diagram.ts`(`collectChat`)产出 SVG 再落盘,
+    其余技能走 `inputs.content`;LLM 未返回有效 `<svg>` 时显式报错(不 mock)。
 - API:`POST /api/drafts/render {draftId, skill, aspect?, count?}`(L2→L3,失败 502 不 mock)、
-  `GET /api/renders/[...path]`(只读预览产物,越界 404);`/visual` 控制台接线(选 draft → 选 skill → 出图 → 预览)。
+  `GET /api/renders/[...path]`(只读预览产物,越界 404)、`GET /api/renderers`(服务端代理 skill-runner `/health`,
+  上游不可达 502);`/visual` 为三栏工作站(待出图列表 / 预览画布 + 候选 / 风格 + 参数 + 生成导出)。
 - **审核 / 处置(B1)**:`/review` 实装审核队列 → 稿件详情(命中词高亮)→ 双闸门(规则 + judge,复用
   `POST /api/drafts/evaluate`)→ 质量评分 → 通过 / 打回 / 编辑后通过 / 批量放行。
   - `PATCH /api/drafts/[id] {status?, body?, titles?}`:写回 `drafts.status`(`src/lib/review/status.ts` 状态机:
     `draft→in_review/approved/rejected`、`in_review→approved/rejected`、`approved→published/rejected`、
     `rejected→in_review/draft`;非法状态 400、非法流转 409);内容字段用于「编辑后通过」。
   - `GET /api/drafts/[id]`:单篇详情(含图片预览 url)。
+- **批量选题(B2)**:`/topic` 卡片多选 + 底部 selbar(已选 N / 预计生成 N 篇 / 清空 / 加入生产队列),
+  入队以 `?topicId=…&topicId=…` 传入 `/workbench`;工作台据此**逐选题**调用既有
+  `POST /api/drafts/generate`(选定平台),聚合 draft 与 `errors[]`(不改数据模型)。
+- **死端点接线(B2/F-11)**:`POST /api/title-boost`(SSE,10 个分类标题)→ 工作台每篇 draft 的「AI 标题备选」,
+  应用后经 `PATCH /api/drafts/[id] {titles}` 落库;`POST /api/infographic`(SSE,信息图 HTML)→ 视觉工位
+  信息图类型的「信息图 HTML 版」(iframe 预览 + 下载)。
 - **生成降级(F-02)**:`POST /api/drafts/generate` 逐平台隔离(`produceBatchIsolated`)——单平台生成/评估失败
   不整批 500,成功 draft 立即入库,失败平台记入 `errors[]`;评估失败时保留已生成正文(仅标注 error)。
 - **主题(B1)**:`html[data-theme="light|dark"]`(`layout.tsx` 内联脚本防 FOUC + 顶栏 `ThemeToggle` + `localStorage`),

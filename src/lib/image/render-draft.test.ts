@@ -7,6 +7,7 @@ import {
   mergeImagesBySkill,
   renderDraftFiles,
   resolveRenderPath,
+  skillNeedsSvg,
   toDraftImages,
   toRenderUrl,
   withImageUrls,
@@ -39,10 +40,19 @@ describe('imageContentFromDraft', () => {
 });
 
 describe('isDraftRenderSkill', () => {
-  it('accepts the two wired skills and rejects others', () => {
+  it('accepts the five wired skills and rejects others', () => {
+    expect(DRAFT_RENDER_SKILLS).toHaveLength(5);
     for (const skill of DRAFT_RENDER_SKILLS) expect(isDraftRenderSkill(skill)).toBe(true);
     expect(isDraftRenderSkill('mondo')).toBe(false);
     expect(isDraftRenderSkill(undefined)).toBe(false);
+  });
+});
+
+describe('skillNeedsSvg', () => {
+  it('only the diagram skill needs an svg input', () => {
+    expect(skillNeedsSvg('baoyu-diagram')).toBe(true);
+    expect(skillNeedsSvg('baoyu-xhs-images')).toBe(false);
+    expect(skillNeedsSvg('baoyu-slide-deck')).toBe(false);
   });
 });
 
@@ -129,5 +139,32 @@ describe('renderDraftFiles', () => {
     await expect(renderDraftFiles({ draft, skill: 'baoyu-cover-image' })).rejects.toThrow(
       /skill-runner request failed/,
     );
+  });
+
+  it('diagram sends svg (not content) via the injected svg builder', async () => {
+    const spy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({ skill: 'baoyu-diagram', files: [{ path: '/srv/renders/d.svg', width: 1080, height: 810 }], meta: {} }),
+      ),
+    );
+    const buildSvg = vi.fn(async () => '<svg xmlns="http://www.w3.org/2000/svg"></svg>');
+    await renderDraftFiles({ draft, skill: 'baoyu-diagram', buildSvg, timeoutMs: 1000 });
+    const body = JSON.parse((spy.mock.calls[0]![1] as RequestInit).body as string);
+    expect(buildSvg).toHaveBeenCalledOnce();
+    expect(body.inputs.svg).toContain('<svg');
+    expect(body.inputs.content).toBeUndefined();
+  });
+
+  it('diagram propagates an svg-builder failure (no mock fallback)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ files: [] })));
+    await expect(
+      renderDraftFiles({
+        draft,
+        skill: 'baoyu-diagram',
+        buildSvg: async () => {
+          throw new Error('LLM 未返回有效 SVG');
+        },
+      }),
+    ).rejects.toThrow(/未返回有效 SVG/);
   });
 });

@@ -1,11 +1,26 @@
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { renderImage } from './client';
+import { generateDiagramSvg } from './diagram';
 import { withBasePath } from '@/lib/base-path';
 import type { Draft, DraftImage } from '@/lib/types';
 
-/** 应用层可选用的出图技能(draft 出图):封面单图 / 小红书卡片图组。 */
-export const DRAFT_RENDER_SKILLS = ['baoyu-cover-image', 'baoyu-xhs-images'] as const;
+/**
+ * 应用层可选用的出图技能(draft 出图,B2/F-03 放宽至 5 类)。
+ * 与 skill-runner `SKILL_NAMES` 中的 agent 技能对齐(封面/卡片/信息图/PPT/图解)。
+ */
+export const DRAFT_RENDER_SKILLS = [
+  'baoyu-xhs-images',
+  'baoyu-cover-image',
+  'baoyu-infographic',
+  'baoyu-slide-deck',
+  'baoyu-diagram',
+] as const;
 export type DraftRenderSkill = (typeof DRAFT_RENDER_SKILLS)[number];
+
+/** 需要由 LLM 先产出 `inputs.svg` 的技能(baoyu-diagram 为 svg 透传)。 */
+export function skillNeedsSvg(skill: string): boolean {
+  return skill === 'baoyu-diagram';
+}
 
 export function isDraftRenderSkill(value: unknown): value is DraftRenderSkill {
   return typeof value === 'string' && (DRAFT_RENDER_SKILLS as readonly string[]).includes(value);
@@ -52,6 +67,8 @@ export interface RenderDraftOptions {
   /** 期望张数(xhs 卡片;作为 inputs 提示,最终受 skill-runner MAX_IMAGES_PER_RENDER 约束)。 */
   count?: number;
   timeoutMs?: number;
+  /** 图解技能所需的 SVG 生成器(缺省调 LLM;测试可注入)。 */
+  buildSvg?: (content: string) => Promise<string>;
 }
 
 export interface RenderDraftFiles {
@@ -63,8 +80,15 @@ export interface RenderDraftFiles {
 /** 调 L3 skill-runner `/render`(复用 `src/lib/image/client.ts`)。失败显式抛错,不 mock。 */
 export async function renderDraftFiles(options: RenderDraftOptions): Promise<RenderDraftFiles> {
   const { draft, skill } = options;
-  const inputs: Record<string, unknown> = { content: imageContentFromDraft(draft) };
-  if (options.count !== undefined) inputs.count = options.count;
+  const content = imageContentFromDraft(draft);
+  const inputs: Record<string, unknown> = {};
+  if (skillNeedsSvg(skill)) {
+    const buildSvg = options.buildSvg ?? generateDiagramSvg;
+    inputs.svg = await buildSvg(content);
+  } else {
+    inputs.content = content;
+    if (options.count !== undefined) inputs.count = options.count;
+  }
   const response = await renderImage(
     { skill, inputs, ...(options.aspect ? { aspect: options.aspect } : {}) },
     options.timeoutMs ?? getRenderTimeoutMs(),
