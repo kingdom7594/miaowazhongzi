@@ -129,3 +129,12 @@
   * { @apply border-border; }
   body { @apply bg-app text-ink antialiased; }
 }
+
+/*
+ * B3 键盘可达:统一可见焦点环。置于 @layer 之外 —— 未分层样式在级联中优先于
+ * Tailwind 的 @layer utilities,因此可覆盖各处 `outline-none`,保证 Tab 导航可见。
+ */
+:where(a, button, input, select, textarea, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
