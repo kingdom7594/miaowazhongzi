@@ -50,6 +50,7 @@ export default function PublishPage() {
   return (
     <div className="flex flex-col gap-4">
       <Pagehead
+        icon={Share2}
         title={
           <span className="inline-flex items-center gap-2">
             发布

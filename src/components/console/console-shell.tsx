@@ -26,6 +26,8 @@ import {
   FlaskConical,
   RefreshCw,
   Bell,
+  Menu,
+  ChevronRight,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -82,6 +84,12 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
 
   const [topics, setTopics] = useState<ContentTopic[]>([]);
   const [drafts, setDrafts] = useState<DraftRecord[]>([]);
+  /** F-07:B4 起移动端(<lg)侧栏为抽屉;桌面端常驻。 */
+  const [navOpen, setNavOpen] = useState(false);
+
+  useEffect(() => {
+    setNavOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     (async () => {
@@ -105,7 +113,18 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-app text-ink">
-      <aside className="flex w-[250px] shrink-0 flex-col border-r border-line bg-panel">
+      {navOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+          onClick={() => setNavOpen(false)}
+          aria-hidden
+        />
+      )}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-[250px] shrink-0 flex-col border-r border-line bg-panel transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0 ${
+          navOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
         <div className="flex items-center gap-2.5 px-5 py-4">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-brand to-violet text-white">
             <FlaskConical size={18} strokeWidth={1.9} />
@@ -128,6 +147,7 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
                   <Link
                     key={href}
                     href={href}
+                    onClick={() => setNavOpen(false)}
                     className={`flex items-center gap-2.5 rounded-sm px-3 py-2 text-sm transition-colors ${
                       isActive ? 'bg-brand/15 text-brand' : 'text-ink-2 hover:bg-panel-3 hover:text-ink'
                     }`}
@@ -168,15 +188,23 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-[60px] shrink-0 items-center justify-between gap-4 border-b border-line bg-panel/60 px-6 backdrop-blur">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="h-2 w-2 shrink-0 rounded-full bg-ok" aria-hidden />
+        <header className="flex h-[60px] shrink-0 items-center justify-between gap-2 border-b border-line bg-panel/60 px-4 backdrop-blur sm:gap-4 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => setNavOpen(true)}
+              aria-label="打开导航"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-sm border border-line text-ink-2 transition-colors hover:bg-panel-3 hover:text-ink lg:hidden"
+            >
+              <Menu size={16} strokeWidth={1.9} />
+            </button>
+            <span className="hidden h-2 w-2 shrink-0 rounded-full bg-ok sm:block" aria-hidden />
             <div className="flex min-w-0 items-baseline gap-2">
               <h1 className="truncate text-base font-bold">{activeNav?.label ?? '内容工厂控制台'}</h1>
               <span className="hidden truncate text-xs text-ink-3 sm:inline">{subtitle}</span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <PipelineStepper currentStage={currentStage} counts={stageCounts} />
             <CommandPalette />
             <button
@@ -192,7 +220,7 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
             <ThemeToggle />
           </div>
         </header>
-        <main className="min-w-0 flex-1 overflow-x-hidden p-6">{children}</main>
+        <main className="min-w-0 flex-1 overflow-x-hidden p-4 sm:p-6">{children}</main>
       </div>
     </div>
   );
@@ -225,7 +253,9 @@ function PipelineStepper({ currentStage, counts }: { currentStage: number; count
                 </span>
               )}
             </span>
-            {i < stages.length - 1 && <span className="px-0.5 text-ink-3">→</span>}
+            {i < stages.length - 1 && (
+              <ChevronRight size={12} strokeWidth={1.9} className="px-0.5 text-ink-3" />
+            )}
           </li>
         );
       })}

@@ -1,7 +1,6 @@
 export interface PlatformSpec {
   id: string;
   name: string;
-  emoji: string;
   wordCount: { min: number; max: number };
   temperature: number;
   titleLength: { min: number; max: number };
@@ -14,7 +13,7 @@ export interface PlatformSpec {
 
 export const PLATFORM_CONFIG: Record<string, PlatformSpec> = {
   xiaohongshu: {
-    id: 'xiaohongshu', name: '小红书', emoji: '📕',
+    id: 'xiaohongshu', name: '小红书',
     wordCount: { min: 300, max: 500 }, temperature: 0.8,
     titleLength: { min: 15, max: 22 },
     titleStyle: '含emoji，数字+痛点+结果 或 反差+悬念',
@@ -29,7 +28,7 @@ export const PLATFORM_CONFIG: Record<string, PlatformSpec> = {
     outputStructure: '3个备选标题 + 正文(300-500字) + 5-8个标签(#关键词)',
   },
   douyin: {
-    id: 'douyin', name: '抖音', emoji: '🎵',
+    id: 'douyin', name: '抖音',
     wordCount: { min: 180, max: 220 }, temperature: 0.8,
     titleLength: { min: 10, max: 15 },
     titleStyle: '悬念/冲突/反常识，15字内',
@@ -45,7 +44,7 @@ export const PLATFORM_CONFIG: Record<string, PlatformSpec> = {
     extraFields: ['hook'],
   },
   wechat: {
-    id: 'wechat', name: '公众号', emoji: '💬',
+    id: 'wechat', name: '公众号',
     wordCount: { min: 1200, max: 1800 }, temperature: 0.6,
     titleLength: { min: 20, max: 25 },
     titleStyle: '观点+悬念 或 痛点+解决方案，20-25字',
@@ -62,7 +61,7 @@ export const PLATFORM_CONFIG: Record<string, PlatformSpec> = {
     extraFields: ['summary', 'layout_tips'],
   },
   bilibili: {
-    id: 'bilibili', name: 'B站', emoji: '📺',
+    id: 'bilibili', name: 'B站',
     wordCount: { min: 800, max: 1500 }, temperature: 0.7,
     titleLength: { min: 15, max: 20 },
     titleStyle: '悬念+数字 或 反差+结论，可玩梗，20字内',
@@ -79,7 +78,7 @@ export const PLATFORM_CONFIG: Record<string, PlatformSpec> = {
     extraFields: ['cover_title', 'timeline'],
   },
   kuaishou: {
-    id: 'kuaishou', name: '快手', emoji: '⚡',
+    id: 'kuaishou', name: '快手',
     wordCount: { min: 120, max: 200 }, temperature: 0.85,
     titleLength: { min: 8, max: 15 },
     titleStyle: '直白口语+利益点，8-15字，接地气',
@@ -95,7 +94,7 @@ export const PLATFORM_CONFIG: Record<string, PlatformSpec> = {
     extraFields: ['hook'],
   },
   shipinhao: {
-    id: 'shipinhao', name: '视频号', emoji: '🎬',
+    id: 'shipinhao', name: '视频号',
     wordCount: { min: 200, max: 400 }, temperature: 0.7,
     titleLength: { min: 12, max: 20 },
     titleStyle: '正向价值+共鸣，12-20字，稳重可信',

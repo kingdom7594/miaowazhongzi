@@ -9,6 +9,7 @@ import {
   FileCode2,
   Check,
   AlertTriangle,
+  Palette,
 } from 'lucide-react';
 import { Alert, Badge, Button, Card, CardHeader, Chip, EmptyState, Pagehead } from '@/components/console/ui';
 import { withBasePath } from '@/lib/base-path';
@@ -198,6 +199,7 @@ export default function VisualPage() {
   return (
     <div className="flex flex-col gap-4">
       <Pagehead
+        icon={Palette}
         title="视觉工位"
         desc="draft → L3 适配器(skill-runner)出图:分析 → 组装 prompt → 出图,耗时较长(非 mock)。"
         actions={
