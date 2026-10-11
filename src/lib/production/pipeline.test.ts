@@ -3,7 +3,7 @@ import type { ContentTopic } from '@/lib/radar/types';
 import type { Draft } from '@/lib/types';
 import { validateDraft } from '@/lib/contracts/validate';
 import type { JudgeCompleter } from '@/lib/compliance/judge';
-import { evaluateDraft, produceAndEvaluate } from './pipeline';
+import { evaluateDraft, produceAndEvaluate, produceBatchIsolated } from './pipeline';
 
 const topic: ContentTopic = { id: 't1', headline: '选题', platforms: ['xiaohongshu'] };
 
@@ -60,5 +60,38 @@ describe('produceAndEvaluate', () => {
     await expect(
       produceAndEvaluate(topic, 'xiaohongshu', { completer: generatorCompleter }),
     ).rejects.toThrow(/evaluator is required/);
+  });
+});
+
+describe('produceBatchIsolated (F-02 单平台降级隔离)', () => {
+  const generatorCompleter = async () =>
+    JSON.stringify({ titles: ['标题'], body: '这是正文', tags: ['#a'], coverPrompt: 'c' });
+
+  it('保留成功 draft:单平台 judge 失败不丢正文、不中断其它平台', async () => {
+    let calls = 0;
+    const flakyJudge: JudgeCompleter = async ({ system }) => {
+      calls += 1;
+      if (calls === 1) throw new Error('judge unreachable');
+      if (system.includes('合规审核员')) {
+        return JSON.stringify({ passed: true, risks: [], notes: '' });
+      }
+      return JSON.stringify({
+        items: [{ index: 0, hook: 4, audienceFit: 4, evidence: 4, platformFit: 4, originality: 4 }],
+      });
+    };
+
+    const results = await produceBatchIsolated(topic, ['xiaohongshu', 'douyin'], {
+      completer: generatorCompleter,
+      evaluator: { judgeCompleter: flakyJudge, judgeModel: 'deepseek-reasoner' },
+    });
+
+    expect(results).toHaveLength(2);
+    // 第一平台评估失败:正文保留 + error 标注,compliance 未回填。
+    expect(results[0].draft?.body).toBe('这是正文');
+    expect(results[0].error).toMatch(/评估失败/);
+    expect(results[0].draft?.compliance).toBeUndefined();
+    // 第二平台不受影响,正常过闸门。
+    expect(results[1].error).toBeUndefined();
+    expect(results[1].draft?.compliance?.checkedBy).toContain('rule+judge');
   });
 });

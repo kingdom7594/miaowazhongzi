@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { collectChat, getLLMConfig, getJudgeConfig } from '@/lib/ai/client';
 import { getTopic } from '@/lib/db/topics';
 import { insertDraft } from '@/lib/db/drafts';
-import { produceDraftsForTopicEvaluated } from '@/lib/production/pipeline';
+import { produceBatchIsolated } from '@/lib/production/pipeline';
 import type { JudgeCompleter } from '@/lib/compliance/judge';
 import type { ContentTopic } from '@/lib/radar/types';
 
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       evaluator = { judgeCompleter, judgeModel: judgeConfig.model };
     }
 
-    const results = await produceDraftsForTopicEvaluated(topic, platforms, {
+    const results = await produceBatchIsolated(topic, platforms, {
       wordCount: body.wordCount,
       aiDensity: body.aiDensity,
       skipEval: body.skipEval,
@@ -62,10 +62,17 @@ export async function POST(request: NextRequest) {
         ),
     });
 
-    const drafts = results
-      .filter((r) => r.draft)
-      .map((r) => ({ id: insertDraft(r.draft!, 'draft'), ...r.draft! }));
-    const errors = results.filter((r) => r.error);
+    // 逐平台落库:成功 draft 立即入库;单平台失败仅记入 errors[](F-02,不整批 500)。
+    const drafts: Array<{ id: number } & NonNullable<(typeof results)[number]['draft']>> = [];
+    const errors: Array<{ platform: string; error: string }> = [];
+    for (const result of results) {
+      if (result.draft) {
+        drafts.push({ id: insertDraft(result.draft, 'draft'), ...result.draft });
+      }
+      if (result.error) {
+        errors.push({ platform: result.platform, error: result.error });
+      }
+    }
 
     return Response.json({ drafts, errors });
   } catch (error) {

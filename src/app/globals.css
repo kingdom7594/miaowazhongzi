@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:is([data-theme="dark"] *));
 
 :root {
   /* shadcn base (kept for existing components) */
@@ -44,7 +44,7 @@
   --violet: #7c5cf0;
 }
 
-.dark {
+:root[data-theme="dark"] {
   --background: #0b0e14;
   --foreground: #e8eaef;
   --card: #12151d;

@@ -48,6 +48,16 @@ radar(L1) --contentBrief--> miaowazhongzi(L2) --draft--> skill-runner(L3) --imag
   skill-runner 绝对路径映射为 app 预览 url(限制在 `RENDER_OUTPUT_ROOT` 内)。
 - API:`POST /api/drafts/render {draftId, skill, aspect?, count?}`(L2→L3,失败 502 不 mock)、
   `GET /api/renders/[...path]`(只读预览产物,越界 404);`/visual` 控制台接线(选 draft → 选 skill → 出图 → 预览)。
+- **审核 / 处置(B1)**:`/review` 实装审核队列 → 稿件详情(命中词高亮)→ 双闸门(规则 + judge,复用
+  `POST /api/drafts/evaluate`)→ 质量评分 → 通过 / 打回 / 编辑后通过 / 批量放行。
+  - `PATCH /api/drafts/[id] {status?, body?, titles?}`:写回 `drafts.status`(`src/lib/review/status.ts` 状态机:
+    `draft→in_review/approved/rejected`、`in_review→approved/rejected`、`approved→published/rejected`、
+    `rejected→in_review/draft`;非法状态 400、非法流转 409);内容字段用于「编辑后通过」。
+  - `GET /api/drafts/[id]`:单篇详情(含图片预览 url)。
+- **生成降级(F-02)**:`POST /api/drafts/generate` 逐平台隔离(`produceBatchIsolated`)——单平台生成/评估失败
+  不整批 500,成功 draft 立即入库,失败平台记入 `errors[]`;评估失败时保留已生成正文(仅标注 error)。
+- **主题(B1)**:`html[data-theme="light|dark"]`(`layout.tsx` 内联脚本防 FOUC + 顶栏 `ThemeToggle` + `localStorage`),
+  `globals.css` 深浅 token 经属性选择器生效。
 - `src/lib/publish`:分发适配器。
 - SQLite:选题库 / 稿件库 / 发布记录。
 
