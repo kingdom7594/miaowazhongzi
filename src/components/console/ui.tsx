@@ -141,3 +141,55 @@ export function Alert({ tone, children }: { tone: BadgeTone; children: React.Rea
     <div className={cn('rounded-md px-3 py-2 text-xs', BADGE_TONES[tone])}>{children}</div>
   );
 }
+
+/** 页面头(G4):大标题 + 说明 + 右侧动作区。 */
+export function Pagehead({
+  title,
+  desc,
+  actions,
+}: {
+  title: React.ReactNode;
+  desc?: React.ReactNode;
+  actions?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="min-w-0">
+        <h2 className="text-lg font-bold leading-tight">{title}</h2>
+        {desc && <div className="mt-1 text-xs text-ink-2">{desc}</div>}
+      </div>
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+/** 复选输入(选题多选等),原生 input + 可见焦点环。 */
+export function Checkbox({
+  checked,
+  onChange,
+  label,
+  disabled,
+}: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  label?: React.ReactNode;
+  disabled?: boolean;
+}) {
+  return (
+    <label
+      className={cn(
+        'inline-flex items-center gap-2 text-xs',
+        disabled ? 'cursor-not-allowed text-ink-3' : 'cursor-pointer text-ink-2',
+      )}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.checked)}
+        className="h-4 w-4 shrink-0 cursor-pointer rounded-sm border border-line-2 accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 disabled:cursor-not-allowed"
+      />
+      {label}
+    </label>
+  );
+}
