@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { RefreshCw, ArrowRight, Database, X, Radar, Check } from 'lucide-react';
-import { Badge, Button, Card, Checkbox, EmptyState, Alert, Pagehead } from '@/components/console/ui';
+import { RefreshCw, ArrowRight, Database, X, Radar } from 'lucide-react';
+import { Badge, Button, Card, Checkbox, EmptyState, Alert, Pagehead, SkeletonCards } from '@/components/console/ui';
+import { ConfirmDialog } from '@/components/console/confirm-dialog';
 import { withBasePath } from '@/lib/base-path';
 import type { ContentTopic } from '@/lib/radar/types';
 
@@ -83,6 +84,7 @@ export default function TopicPage() {
 
   const enqueue = () => {
     if (selected.length === 0) return;
+    setConfirmEnqueue(false);
     const query = selected.map((id) => `topicId=${encodeURIComponent(id)}`).join('&');
     router.push(`/workbench?${query}`);
   };
@@ -110,7 +112,7 @@ export default function TopicPage() {
       {error && <Alert tone="bad">数据源失败:{error}(不阻塞其它操作,可重试)</Alert>}
 
       {loading ? (
-        <EmptyState title="加载中…" />
+        <SkeletonCards count={4} />
       ) : topics.length === 0 ? (
         <EmptyState title="暂无选题" hint="点击右上角「从雷达拉取选题」。" />
       ) : (
@@ -147,6 +149,15 @@ export default function TopicPage() {
                   <Badge tone="plum">{`依据 ${topic.evidence?.length ?? 0}`}</Badge>
                   <Badge tone="gray">{`要点 ${topic.corePoints?.length ?? 0}`}</Badge>
                 </div>
+                {(topic.tags ?? []).length > 0 && (
+                  <div className="flex flex-wrap gap-x-2 gap-y-1">
+                    {(topic.tags ?? []).map((tag) => (
+                      <span key={tag} className="font-mono text-[11px] text-ink-3">
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 {topic.sourceRef && (
                   <div className="truncate font-mono text-[11px] text-ink-3" title={topic.sourceRef}>
                     来源追溯:{topic.sourceRef}
@@ -187,27 +198,23 @@ export default function TopicPage() {
                 <X size={13} /> 清空
               </button>
             </div>
-            {confirmEnqueue ? (
-              <div className="flex items-center gap-2">
-                <span className="hidden text-xs text-ink-2 sm:inline">
-                  确认将 {selected.length} 个选题加入生产队列?
-                </span>
-                <Button variant="ghost" onClick={() => setConfirmEnqueue(false)}>
-                  取消
-                </Button>
-                <Button variant="gen" onClick={enqueue}>
-                  <Check size={15} /> 确认加入
-                </Button>
-              </div>
-            ) : (
-              <Button variant="gen" onClick={() => setConfirmEnqueue(true)}>
-                加入生产队列
-                <ArrowRight size={15} />
-              </Button>
-            )}
+            <Button variant="gen" onClick={() => setConfirmEnqueue(true)}>
+              加入生产队列
+              <ArrowRight size={15} />
+            </Button>
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmEnqueue}
+        title="加入生产队列"
+        description={`确认将已选的 ${selected.length} 个选题加入生产队列?每个选题将按所选平台数生成对应稿件。`}
+        confirmLabel="确认加入"
+        tone="gen"
+        onConfirm={enqueue}
+        onCancel={() => setConfirmEnqueue(false)}
+      />
     </div>
   );
 }

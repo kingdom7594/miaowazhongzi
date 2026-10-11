@@ -37,6 +37,44 @@ export function CommandPalette() {
   const [remote, setRemote] = useState<Command[]>([]);
   const [loaded, setLoaded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const prevFocus = useRef<HTMLElement | null>(null);
+
+  // 焦点管理(B5 a11y):打开时记住触发元素,关闭后归还;Tab 在面板内循环。
+  useEffect(() => {
+    if (open) {
+      prevFocus.current = (document.activeElement as HTMLElement) ?? null;
+    } else {
+      prevFocus.current?.focus?.();
+      prevFocus.current = null;
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const root = panelRef.current;
+      if (!root) return;
+      const nodes = Array.from(
+        root.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((n) => !n.hasAttribute('disabled') && n.offsetParent !== null);
+      if (nodes.length === 0) return;
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [open]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -125,6 +163,10 @@ export function CommandPalette() {
       onClick={() => setOpen(false)}
     >
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="命令面板(搜索)"
         className="w-full max-w-lg overflow-hidden rounded-md border border-line bg-panel shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
@@ -150,6 +192,7 @@ export function CommandPalette() {
               }
             }}
             placeholder="搜索选题 / 稿件 / 页面…"
+            aria-label="搜索选题 / 稿件 / 页面"
             className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-ink-3"
           />
         </div>

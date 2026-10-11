@@ -113,6 +113,12 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-app text-ink">
+      <a
+        href="#main-content"
+        className="sr-only rounded-sm focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[70] focus:bg-panel focus:px-3 focus:py-2 focus:text-sm focus:text-ink focus:shadow-lg"
+      >
+        跳到主要内容
+      </a>
       {navOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/40 lg:hidden"
@@ -121,6 +127,8 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
         />
       )}
       <aside
+        id="app-sidebar"
+        aria-label="侧边栏"
         className={`fixed inset-y-0 left-0 z-50 flex w-[250px] shrink-0 flex-col border-r border-line bg-panel transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0 ${
           navOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
@@ -135,7 +143,7 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 py-2">
+        <nav aria-label="主导航" className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 py-2">
           {NAV_GROUPS.map((group) => (
             <div key={group.label} className="flex flex-col gap-0.5">
               <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-ink-3">
@@ -194,13 +202,15 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
               type="button"
               onClick={() => setNavOpen(true)}
               aria-label="打开导航"
+              aria-controls="app-sidebar"
+              aria-expanded={navOpen}
               className="grid h-8 w-8 shrink-0 place-items-center rounded-sm border border-line text-ink-2 transition-colors hover:bg-panel-3 hover:text-ink lg:hidden"
             >
               <Menu size={16} strokeWidth={1.9} />
             </button>
             <span className="hidden h-2 w-2 shrink-0 rounded-full bg-ok sm:block" aria-hidden />
             <div className="flex min-w-0 items-baseline gap-2">
-              <h1 className="truncate text-base font-bold">{activeNav?.label ?? '内容工厂控制台'}</h1>
+              <div className="truncate text-base font-bold">{activeNav?.label ?? '内容工厂控制台'}</div>
               <span className="hidden truncate text-xs text-ink-3 sm:inline">{subtitle}</span>
             </div>
           </div>
@@ -220,7 +230,7 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
             <ThemeToggle />
           </div>
         </header>
-        <main className="min-w-0 flex-1 overflow-x-hidden p-4 sm:p-6">{children}</main>
+        <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 overflow-x-hidden p-4 outline-none sm:p-6">{children}</main>
       </div>
     </div>
   );
