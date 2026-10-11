@@ -7,7 +7,6 @@ import { judgeBatch } from '@/lib/eval/judge';
 import { RUBRIC_DIMS } from '@/lib/eval/rubric';
 import {
   produceDraftForPlatform,
-  produceDraftsForTopic,
   type ProduceOptions,
   type ProduceResult,
 } from './drafts';
@@ -73,16 +72,43 @@ export async function produceAndEvaluate(
   return { ...result, draft };
 }
 
-/** 批量生成并(默认)过 L5 双闸门。 */
+/** 生成单份 draft,单平台失败隔离(F-02):评估失败不丢弃已生成正文,随 error 一并返回。 */
+export async function produceAndEvaluateIsolated(
+  topic: ContentTopic,
+  platform: string,
+  options: PipelineOptions,
+): Promise<ProduceResult> {
+  const result = await produceDraftForPlatform(topic, platform, options);
+  if (result.error || !result.draft) return result;
+  if (options.skipEval) return result;
+  try {
+    const draft = await evaluateDraft(result.draft, topic, requireEvaluator(options));
+    return { ...result, draft };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'evaluation failed';
+    // 保留 generated draft,仅标注 L5 评估失败(不整批丢失已付费产出)。
+    return { platform, draft: result.draft, error: `L5 评估失败(正文已保留): ${message}` };
+  }
+}
+
+/** 批量生成,逐平台隔离:任一平台出错不影响其它平台入库。 */
+export async function produceBatchIsolated(
+  topic: ContentTopic,
+  platforms: string[],
+  options: PipelineOptions,
+): Promise<ProduceResult[]> {
+  const results: ProduceResult[] = [];
+  for (const platform of platforms) {
+    results.push(await produceAndEvaluateIsolated(topic, platform, options));
+  }
+  return results;
+}
+
+/** 批量生成并(默认)过 L5 双闸门(逐平台隔离,失败不中断整批)。 */
 export async function produceDraftsForTopicEvaluated(
   topic: ContentTopic,
   platforms: string[],
   options: PipelineOptions,
 ): Promise<ProduceResult[]> {
-  if (options.skipEval) return produceDraftsForTopic(topic, platforms, options);
-  const results: ProduceResult[] = [];
-  for (const platform of platforms) {
-    results.push(await produceAndEvaluate(topic, platform, options));
-  }
-  return results;
+  return produceBatchIsolated(topic, platforms, options);
 }

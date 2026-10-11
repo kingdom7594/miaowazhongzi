@@ -107,6 +107,30 @@ export function updateDraftImages(id: number, images: Draft['images'], db: Datab
   return Number(result.changes) > 0;
 }
 
+/** 审核页「编辑后通过」:就地更新标题备选 / 正文(只改传入字段)。 */
+export function updateDraftContent(
+  id: number,
+  content: { body?: string; titles?: string[] },
+  db: DatabaseSync = getDb(),
+): boolean {
+  const sets: string[] = [];
+  const values: Array<string | number> = [];
+  if (typeof content.body === 'string') {
+    sets.push('body = ?');
+    values.push(content.body);
+  }
+  if (Array.isArray(content.titles)) {
+    sets.push('titles_json = ?');
+    values.push(JSON.stringify(content.titles));
+  }
+  if (sets.length === 0) return false;
+  sets.push('updated_at = ?');
+  values.push(new Date().toISOString());
+  values.push(id);
+  const result = db.prepare(`UPDATE drafts SET ${sets.join(', ')} WHERE id = ?`).run(...values);
+  return Number(result.changes) > 0;
+}
+
 export function updateDraftStatus(id: number, status: DraftStatus, db: DatabaseSync = getDb()): boolean {
   const result = db
     .prepare('UPDATE drafts SET status = ?, updated_at = ? WHERE id = ?')

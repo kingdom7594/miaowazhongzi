@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BASE_PATH } from '@/lib/base-path';
+import { ThemeToggle } from './theme-toggle';
 import {
   Radar,
   Sparkles,
@@ -79,7 +80,10 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
             <h1 className="text-base font-bold">{active?.label ?? '内容工厂控制台'}</h1>
             <span className="font-mono text-[11px] text-ink-3">/ {pathname.replace('/', '') || 'topic'}</span>
           </div>
-          <PipelineStepper currentStage={active?.stage ?? 0} />
+          <div className="flex items-center gap-3">
+            <PipelineStepper currentStage={active?.stage ?? 0} />
+            <ThemeToggle />
+          </div>
         </header>
         <main className="min-w-0 flex-1 overflow-x-hidden p-6">{children}</main>
       </div>
